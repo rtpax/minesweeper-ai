@@ -36,21 +36,21 @@ char cell_to_char(ms::cell c) {
 
 void printms(const ms::grid * const g) {
     printf(" ");
-    for(int w = 0; w < g->width(); ++w) {
+    for(unsigned int w = 0; w < g->width(); ++w) {
         printf("--");
     }
     printf("  \n");
 
-    for(int h = 0; h < g->height(); ++h) {
+    for(unsigned int h = 0; h < g->height(); ++h) {
         printf("|");
-        for(int w = 0; w < g->width(); ++w) {
+        for(unsigned int w = 0; w < g->width(); ++w) {
             printf(" %c",cell_to_char(g->get(h, w)));
         }
         printf(" |\n");
     }
 
     printf(" ");
-    for(int w = 0; w < g->width(); ++w) {
+    for(unsigned int w = 0; w < g->width(); ++w) {
         printf("--");
     }
     printf("  \n");

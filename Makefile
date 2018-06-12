@@ -1,36 +1,39 @@
 CC=gcc
-CPP=g++
+CXX=g++
 
-
-CPPFLAGS=-g -c
+CPPFLAGS=-DDEBUG
+CFLAGS=-g -c -Wall
+CXXFLAGS=-g -c -Wall -Og
 LDFLAGS=-g
 LDLIBS=
 
 SRCS=grid.cpp main.cpp region.cpp solver.cpp spingrid.cpp spinoff.cpp
-OBJS=$(subst .cpp,.o,$(SRCS))
+MODULES=$(SRCS:.cpp=)
+OBJS=$(SRCS:.cpp=.o)
 
-SOLVER_DEP=grid.h region.h solver.h
+solver_DEP=solver.h $(grid_DEP) $(region_DEP)
+region_DEP=region.h
+spingrid_DEP=spingrid.h $(grid_DEP)
+spinoff_DEP=spinoff.h $(solver_DEP) $(spingrid_DEP)
+main_DEP=solver.h spinoff.h
+grid_DEP=grid.h
+
+define newline
+
+
+endef
 
 OUT=minesweep.exe
 
-all: $(OBJS)
+all: $(OUT)
 
-install: $(OUT)
+nolink: $(OBJS)
 
 $(OUT):$(OBJS)
-	$(CPP) $(OBJS) -o $(OUT) $(LDFLAGS) $(LDLIBS)
-region.o: region.cpp region.h
-	$(CPP) $(CPPFLAGS) region.cpp -o region.o
-solver.o: solver.cpp $(SOLVER_DEP)
-	$(CPP) $(CPPFLAGS) solver.cpp -o solver.o
-grid.o: grid.cpp grid.h
-	$(CPP) $(CPPFLAGS) grid.cpp -o grid.o
-main.o: main.cpp $(SOLVER_DEP)
-	$(CPP) $(CPPFLAGS) main.cpp -o main.o
-spingrid.o: spingrid.cpp
-	$(CPP) $(CPPFLAGS) spingrid.cpp -o spingrid.o
-spinoff.o: spinoff.cpp spinoff.h $(SOLVER_DEP)
-	$(CPP) $(CPPFLAGS) spinoff.cpp -o spinoff.o
+	$(CXX) $(OBJS) -o $(OUT) $(LDFLAGS) $(LDLIBS)
+
+
+$(foreach module,$(MODULES),$(eval CUR_MODULE:=$(module)) $(eval include makemodule.mk))
 
 
 clean:

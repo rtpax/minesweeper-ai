@@ -1,16 +1,32 @@
 #include "grid.h"
-#include <random>
-#include <time.h>
 #include <vector>
 
-namespace ms {
 
+
+
+namespace ms {
 
 	bool grid::iscontained(int row, int col) const {
 		return (0 <= row && row < (signed int)_height) && (0 <= col && col < (signed int)_width);
 	}
 
 	struct rc_coord { unsigned int row, col; };
+
+	int grid::count_neighbor(int row, int col, cell value) {
+		int count = 0;
+
+		for (int rr = -1; rr <= 1; ++rr) {
+			for (int cc = -1; cc <= 1; ++cc) {
+				if (!(rr == 0 && cc == 0) && iscontained(row + rr, col + cc)) {
+					if (_grid[row + rr][col + cc] == value) {
+						++count;
+					}
+				}
+			}
+		}
+
+		return count;
+	}
 
 	int grid::init(unsigned int row, unsigned int col) {
 		std::vector<rc_coord> nonbombs(_height*_width);
@@ -28,25 +44,17 @@ namespace ms {
 			}
 		}
 
-		std::mt19937 rng;
-		rng.seed(time(NULL));
-
 		for (unsigned int b = 0; b < _bombs; ++b) {
-			index = rng() % nonbombs.size();
+			index = rng.mt() % nonbombs.size();
 			_grid[nonbombs[index].row][nonbombs[index].col] = ms_bomb;
 			nonbombs.erase(nonbombs.begin() + index);
 		}
 
 		//count all bombs adjacent to each nonbomb square
-		for (int r = 0; r < _height; ++r) {
-			for (int c = 0; c < _width; ++c) {
+		for (unsigned int r = 0; r < _height; ++r) {
+			for (unsigned int c = 0; c < _width; ++c) {
 				if (_grid[r][c] != ms_bomb)
-					for (int rr = -1; rr <= 1; ++rr)
-						for (int cc = -1; cc <= 1; ++cc)
-							if (!(rr == 0 && cc == 0) && iscontained(r + rr, c + cc))
-								if (_grid[r + rr][c + cc] == ms_bomb)
-									++(_grid[r][c]);
-
+					_grid[r][c] = count_neighbor(r, c, ms_bomb);
 			}
 		}
 
@@ -55,22 +63,65 @@ namespace ms {
 		return open(row, col);
 	}
 
-	grid::grid(unsigned int height, unsigned int width, unsigned int bombs) {
+	int grid::allocate__(unsigned int height, unsigned int width, unsigned int bombs) {
 		_width = width > 0 ? width : 1;
 		_height = height > 0 ? height : 1;
 		_bombs = bombs;
 		_grid = new char*[_height];
 		_visgrid = new char*[_height];
-		for (int h = 0; h < _height; ++h) {
+		for (unsigned int h = 0; h < _height; ++h) {
 			_grid[h] = new char[_width];
 			_visgrid[h] = new char[_width];
 		}
+
+		return 0;
+	}
+
+	grid::grid(unsigned int height, unsigned int width, unsigned int bombs) {
+		allocate__(height,width,bombs);
 		_gs = NEW;
+	}
+
+	grid::grid(const grid& copy, grid_copy_type gct) {
+
+		allocate__(copy._height,copy._width,copy._bombs);
+
+		switch(gct) {
+		case FULL_COPY:
+			for(unsigned int r = 0; r < _height; ++r) {
+				for(unsigned int c = 0; c < _width; ++c) {
+					_visgrid[r][c] = copy._visgrid[r][c];
+					_grid[r][c] = copy._visgrid[r][c];
+				}
+			}
+			_gs = RUNNING;
+			break;
+		case HIDDEN_COPY:
+			for(unsigned int r = 0; r < _height; ++r) {
+				for(unsigned int c = 0; c < _width; ++c) {
+					_visgrid[r][c] = ms_hidden;
+					_grid[r][c] = copy._grid[r][c];
+				}
+			}
+			_gs = RUNNING;
+			break;
+		case SURFACE_COPY:
+			for(unsigned int r = 0; r < _height; ++r) {
+				for(unsigned int c = 0; c < _width; ++c) {
+					_visgrid[r][c] = copy._visgrid[r][c];
+				}
+			}	
+			_gs = NEW;	
+			break;
+		case PARAM_COPY:
+			_gs = NEW;
+			break;
+		}
 	}
 
 
 	grid::~grid() {
-		for (int h = 0; h < _height; ++h) {
+		for (unsigned int h = 0; h < _height; ++h) {
 			delete[] _grid[h];
 			delete[] _visgrid[h];
 		}
@@ -103,14 +154,7 @@ namespace ms {
 
 	int grid::open__(int row, int col) {
 		if (0 <= _visgrid[row][col] && _visgrid[row][col] <= 8) {
-			int flagcount = 0;
-			for (int rr = -1; rr <= 1; ++rr) {
-				for (int cc = -1; cc <= 1; ++cc) {
-					if (!(rr == 0 && cc == 0) && iscontained(row + rr, col + cc))
-						if (_visgrid[row + rr][row + cc] == ms_flag)
-							++flagcount;
-				}
-			}
+			int flagcount = count_neighbor(row, col, ms_flag);
 			if (flagcount == _visgrid[row][col]) {
 				int sum = 0;
 				for (int rr = -1; rr <= 1; ++rr) {
@@ -161,8 +205,8 @@ namespace ms {
 		if (_gs != RUNNING)
 			return 0;
 		bool haswon = 1;
-		for (int r = 0; r < _height; ++r) {
-			for (int c = 0; c < _width; ++c) {
+		for (unsigned int r = 0; r < _height; ++r) {
+			for (unsigned int c = 0; c < _width; ++c) {
 				if (_visgrid[r][c] == ms_bomb) {
 					_gs = LOST;
 					return 1;
@@ -181,8 +225,8 @@ namespace ms {
 
 	void grid::reset() {
 		_gs = NEW;
-		for (int r = 0; r < _height; ++r) {
-			for (int c = 0; c < _width; ++c) {
+		for (unsigned int r = 0; r < _height; ++r) {
+			for (unsigned int c = 0; c < _width; ++c) {
 				_visgrid[r][c] = ms_hidden;
 			}
 		}

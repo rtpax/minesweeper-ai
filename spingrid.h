@@ -4,13 +4,14 @@
 #include "grid.h"
 
 namespace ms {
-	class spingrid : public grid {
-	public:
-		spingrid();
-		spingrid(grid * parent);
-		int set(unsigned int row, unsigned int column);
+	class spingrid {
 	private:
-		
+		grid _base;
+	public:
+		spingrid(const grid& parent) : _base(parent, SURFACE_COPY) {}
+
+		int set(unsigned int row, unsigned int col, cell value) { _base._visgrid[row][col] = value; return 0; }
+		const grid& base() const { return _base; }
 	};
 }
 

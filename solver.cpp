@@ -28,8 +28,8 @@ namespace ms {
 	 *
 	 */
 	int solver::find_base_regions() {
-		for (int r = 0; r < g->height(); ++r) {
-			for (int c = 0; c < g->width(); ++c) {
+		for (unsigned int r = 0; r < g->height(); ++r) {
+			for (unsigned int c = 0; c < g->width(); ++c) {
 				region reg;
 				int num_flags = 0;
 				for (int rr = -1; rr <= 1; ++rr)
@@ -44,6 +44,8 @@ namespace ms {
 							case ms_flag:
 								++num_flags;
 								break;
+							default:
+								break;
 							}
 
 						}
@@ -51,6 +53,8 @@ namespace ms {
 				regions.push_back(reg);
 			}
 		}
+
+		return 0;
 	}
 
 	/* int solver::find_aux_regions()
@@ -105,9 +109,9 @@ namespace ms {
 	int solver::trim_regions() {
 		region zero;
 
-		int isize = regions.size();
+		size_t initial_size = regions.size();
 
-		for (int i = 0; i < regions.size();) {
+		for (unsigned int i = 0; i < regions.size();) {
 			if (regions[i].size() != 0) {
 				regions[i].trim(); //can never make a size 0
 				++i;
@@ -116,8 +120,8 @@ namespace ms {
 				regions.erase(regions.begin() + i);
 			}
 		}
-		for (int i = 0; i < regions.size() - 1; ++i) {
-			for (int j = i + 1; j < regions.size();) {
+		for (int i = 0; i < (int) regions.size() - 1; ++i) {
+			for (unsigned int j = i + 1; j < regions.size();) {
 				if (regions[i].samearea(regions[j])) {
 					regions[i] = regions[i].merge(regions[j]);
 					regions.erase(regions.begin() + j);
@@ -128,7 +132,7 @@ namespace ms {
 			}
 		}
 
-		return isize - regions.size();
+		return initial_size - regions.size();
 	}
 
 	/* int solver::add_region(region arg)
@@ -139,7 +143,7 @@ namespace ms {
 	 *
 	 */
 	int solver::add_region(const region& arg) {
-		for (int i = 0; i < regions.size(); ++i) {
+		for (unsigned int i = 0; i < regions.size(); ++i) {
 			if (regions[i].size() == arg.size()) {
 				regions[i] = regions[i].merge(arg);
 				return 0;
@@ -157,12 +161,13 @@ namespace ms {
 	int solver::find_conglomerate() {
 		conglomerates.push_back(region());
 		std::vector<region> starts = find_best_starting_points(conglomerates[0]);
-		for (int i = 1; i < starts.size(); ++i) {
+		for (unsigned int i = 1; i < starts.size(); ++i) {
 			conglomerates.push_back(conglomerates[0]);
 		}
-		for (int i = 1; i < starts.size(); ++i) {
+		for (unsigned int i = 1; i < starts.size(); ++i) {
 			work_from_starting_point(conglomerates[0], starts[0]);
 		}
+		return 0;
 	}
 
 
@@ -173,6 +178,7 @@ namespace ms {
 		find_aux_regions();
 		find_conglomerate();
 		leftover_region();
+		return 0;
 	}
 	
 

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <assert.h>
+#include <stddef.h>
 
 namespace ms {
 
@@ -34,7 +35,7 @@ namespace ms {
 		int remove_bomb(rc_coord bomb);
 		int remove_safe(rc_coord safe);
 		int trim();
-		int size() const { return _cells.size(); }
+		size_t size() const { return _cells.size(); }
 		rc_coord& operator[](int index) { return _cells[index]; }
 		const rc_coord& operator[](int index) const { return _cells[index]; }
 #ifdef DEBUG

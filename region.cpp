@@ -14,7 +14,7 @@ namespace ms {
 	*
 	*/
 	int region::addcell(rc_coord arg) {
-		for (int i = 0; i < _cells.size(); ++i)
+		for (unsigned int i = 0; i < _cells.size(); ++i)
 			if (_cells[i] == arg)
 				return 0;
 		_cells.push_back(arg);
@@ -27,8 +27,8 @@ namespace ms {
 	*
 	*/
 	int region::trim() {
-		for (int i = 0; i < _cells.size() - 1; ++i) {
-			for (int j = i + 1; j < _cells.size();) {
+		for (int i = 0; i < (int)_cells.size() - 1; ++i) {
+			for (unsigned int j = i + 1; j < _cells.size();) {
 				if (_cells[i] == _cells[j]) {
 					_cells.erase(_cells.begin() + 5);
 				}
@@ -37,6 +37,7 @@ namespace ms {
 				}
 			}
 		}
+		return 0;
 	}
 
 	/* region region::intersect(region arg) const
@@ -49,8 +50,8 @@ namespace ms {
 	*/
 	region region::intersect(const region& arg) const {
 		region ret;
-		for (int i = 0; i < _cells.size(); ++i) {
-			for (int j = 0; j < arg._cells.size(); ++j) {
+		for (unsigned int i = 0; i < _cells.size(); ++i) {
+			for (unsigned int j = 0; j < arg._cells.size(); ++j) {
 				if (_cells[i] == arg._cells[j]) {
 					ret._cells.push_back(_cells[i]);
 					break;
@@ -102,10 +103,10 @@ namespace ms {
 	region region::unite(const region& arg) const {
 		region ret;
 		int common = 0;
-		for (int i = 0; i < _cells.size(); ++i) {
+		for (unsigned int i = 0; i < _cells.size(); ++i) {
 			ret._cells.push_back(_cells[i]);//no need for check repeats on adding to empty region
 		}
-		for (int i = 0; i < arg._cells.size(); ++i) {
+		for (unsigned int i = 0; i < arg._cells.size(); ++i) {
 			if (!ret.addcell(arg._cells[i]))
 				++common;
 		}
@@ -128,9 +129,9 @@ namespace ms {
 	*/
 	region region::subtract(const region& arg) const {
 		region ret;
-		for (int i = 0; i < _cells.size(); ++i) {
+		for (unsigned int i = 0; i < _cells.size(); ++i) {
 			bool inarg = 0;
-			for (int j = 0; j < arg._cells.size(); ++j) {
+			for (unsigned int j = 0; j < arg._cells.size(); ++j) {
 				if (arg._cells[j] == _cells[i]) {
 					inarg = 1;
 					break;
@@ -174,7 +175,7 @@ namespace ms {
 	int region::remove_bomb(rc_coord bomb) {
 		if (min == 0)
 			return 1;
-		for (int i = 0; i < size(); ++i) {
+		for (unsigned int i = 0; i < size(); ++i) {
 			if (_cells[i] == bomb) {
 				_cells.erase(_cells.begin() + i);
 				--min;
@@ -194,7 +195,7 @@ namespace ms {
 	*/
 	int region::remove_safe(rc_coord safe) {
 		if(max == size() && min == size())
-		for (int i = 0; i < size(); ++i) {
+		for (unsigned int i = 0; i < size(); ++i) {
 			if (_cells[i] == safe) {
 				_cells.erase(_cells.begin() + i);
 				return 0;

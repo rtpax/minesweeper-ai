@@ -8,7 +8,6 @@
 
 namespace ms {
 
-	class solver;
 	class spinoff;
 
 	class solver {
@@ -46,9 +45,10 @@ namespace ms {
 
 #ifdef DEBUG
 		int assert_each_trim() {
-			for(int i = 0; i < regions.size(); ++i) {
+			for(unsigned int i = 0; i < regions.size(); ++i) {
 				regions[i].assert_trim();
 			}
+			return 0;
 		}
 #else
 		int assert_each_trim(){ return 0; }
