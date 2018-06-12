@@ -1,0 +1,11 @@
+/minesweep.exe
+
+/grid.o
+/region.o
+/solver.o
+/spingrid.o
+/spinoff.o
+/main.o
+
+/sandbox
+a.exe
