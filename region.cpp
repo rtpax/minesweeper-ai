@@ -59,8 +59,8 @@ namespace ms {
 			}
 		}
 
-		ret.max = minint(minint(this->max, arg.max), ret._cells.size());
-		ret.min = maxint(this->min, arg.min);
+		ret._max = minint(minint(_max, arg._max), ret._cells.size());
+		ret._min = maxint(_min, arg._min);
 
 		return ret;
 	}
@@ -111,9 +111,9 @@ namespace ms {
 				++common;
 		}
 
-		ret.max = minint(arg.max + max - nonneg((_cells.size() - common) - min),
-			arg.max + max - nonneg((_cells.size() - common) - arg.min));
-		ret.min = arg.min + min - minint(minint(arg.min, min), common);
+		ret._max = minint(arg._max + _max - nonneg(_max - (_cells.size() - common)),
+			arg._max + _max - nonneg(arg._max - (arg._cells.size() - common)));
+		ret._min = arg._min + _min - minint(minint(arg._min, _min), common);
 
 		return ret;
 	}
@@ -141,8 +141,8 @@ namespace ms {
 				ret._cells.push_back(_cells[i]);
 		}
 
-		ret.max = 0;
-		ret.min = 0;
+		ret._max = 0;
+		ret._min = 0;
 
 		return ret;
 	}
@@ -159,8 +159,8 @@ namespace ms {
 		region ret;
 		if (_cells == arg._cells) {
 			ret._cells = _cells;
-			ret.max = minint(max, arg.max);
-			ret.min = maxint(min, arg.min);
+			ret._max = minint(_max, arg._max);
+			ret._min = maxint(_min, arg._min);
 		}
 		return ret;
 	}
@@ -170,16 +170,23 @@ namespace ms {
 	 * removes a cell at the specified location treating it as a bomb
 	 * decreases min and max by 1, removes fromc _cells, and returns 0
 	 * if bomb is not contained in the region, or min == 0, do nothing and return 1
-	 *
+	 * if bomb is located in the region, but the region has no bombs (max of 0) return 2, but still remove
+	 * 
 	 */
 	int region::remove_bomb(rc_coord bomb) {
-		if (min == 0)
+		if (_min == 0)
 			return 1;
 		for (unsigned int i = 0; i < size(); ++i) {
 			if (_cells[i] == bomb) {
 				_cells.erase(_cells.begin() + i);
-				--min;
-				--max;
+				
+				if(_min != 0)
+					--_min;
+				if(_max != 0)
+					--_max;
+				else 
+					return 2;
+
 				return 0;
 			}
 		}
@@ -190,14 +197,21 @@ namespace ms {
 	*
 	* removes a cell at the specified location treating it as a non bomb
 	* removes from _cells, and returns 0
-	* if safe is not contained in the region, or min == 0, do nothing and return 1
+	* if safe is not contained in the region, do nothing and return 1
+	* if safe is located in the region, but there are no safe spaces (min == size), remove the cell but return 1;
 	*
 	*/
 	int region::remove_safe(rc_coord safe) {
-		if(max == size() && min == size())
 		for (unsigned int i = 0; i < size(); ++i) {
 			if (_cells[i] == safe) {
 				_cells.erase(_cells.begin() + i);
+
+				if(_max > size())
+					_max = size();
+				if(_min > _max) { //implies _min > size()
+					_min = _max;
+					return 2;
+				}
 				return 0;
 			}
 		}

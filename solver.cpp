@@ -2,14 +2,43 @@
 
 namespace ms {
 
+	typedef std::list<region>::iterator literator;
+	literator it_add(literator base, int amount) {
+		for(int i = 0; i < amount; ++i)
+			++base;
+		for(int i = 0; i > amount; --i)
+			--base;
+		return base;
+	}
+
+#ifdef DEBUG
+	int solver::assert_each_trim() {
+		for(literator ri = regions.begin(); ri != regions.end(); ++ri) {
+			(*ri).assert_trim();
+		}
+		return 0;
+	}
+	int solver::assert_norepeat() {
+		for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
+			for(literator rj = it_add(ri, 1); rj != regions.end(); ++rj) {
+				assert((*ri) != *rj);
+			}
+		}
+		return 0;
+	}
+#else
+	int solver::assert_each_trim(){ return 0; }
+	int solver::assert_norepeat(){ return 0; }
+#endif
+
 
 	/* solver::solver(grid * g)
 	 *
-	 * sets grid, all other members default initialize
+	 * copies grid, all other members default initialize
 	 *
 	 */
-	solver::solver(grid * g) {
-		this->g = g;
+	solver::solver(const grid& start) : g(start, FULL_COPY) {
+		
 	}
 
 
@@ -28,15 +57,15 @@ namespace ms {
 	 *
 	 */
 	int solver::find_base_regions() {
-		for (unsigned int r = 0; r < g->height(); ++r) {
-			for (unsigned int c = 0; c < g->width(); ++c) {
+		for (unsigned int r = 0; r < g.height(); ++r) {
+			for (unsigned int c = 0; c < g.width(); ++c) {
 				region reg;
 				int num_flags = 0;
 				for (int rr = -1; rr <= 1; ++rr)
 					for (int cc = -1; cc <= 1; ++cc)
-						if (!(rr == 0 && cc == 0) && g->iscontained(r + rr, c + cc) &&
-							g->get(r + rr, c + cc) <= 8 && g->get(r + rr, c + cc) > 0) {
-							switch (g->get(r + rr, c + cc)) {
+						if (!(rr == 0 && cc == 0) && g.iscontained(r + rr, c + cc) &&
+							g.get(r + rr, c + cc) <= 8 && g.get(r + rr, c + cc) > 0) {
+							switch (g.get(r + rr, c + cc)) {
 							case ms_hidden:
 							case ms_question:
 								reg.addcell(rc_coord(r + rr, c + cc));
@@ -49,7 +78,7 @@ namespace ms {
 							}
 
 						}
-				reg.min = reg.max = g->get(r, c) - num_flags;
+				reg.set_count(g.get(r, c) - num_flags);
 				regions.push_back(reg);
 			}
 		}
@@ -68,24 +97,24 @@ namespace ms {
 	 */
 	int solver::find_aux_regions() {
 		trim_regions();
-		std::vector<region> old_regions;
 		int size = regions.size();
 
-		do {
-			old_regions = regions;
+		for (int startsize = size, endsize = size; startsize == endsize; endsize = regions.size()) { //loops as long as nothing was added
+			startsize = endsize;
 
-			for (int i = 0; i < size - 1; ++i) { //first of pair
-				for (int j = i + 1; j < size; ++j) { //second of pair
-					region _inter = regions[i].intersect(regions[j]);
+			if(!regions.empty())//otherwise the conditional will never be true
+			for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
+				for(literator rj = it_add(ri, 1); rj != regions.end(); ++rj) {
+					region _inter = (*rj).intersect(*rj);
 					if (_inter.size() > 0) {
-						//region _union = regions[i].unite(regions[j]); // can't think of any useful application for this knowledge
-																		// which implies that after getting subij, subji, and inter,
-																		// we should delete the original (TODO determine if that's a good
-																		// idea and implement)
-																		// even if  union is usesd, it would be better in a seperate loop
-																		// because it's potential run time is much longer than the others
-						region _subij = regions[i].subtract(regions[j]);
-						region _subji = regions[j].subtract(regions[i]);
+						//region _union = ri.unite(rj);	// can't think of any useful application for this knowledge
+														// which implies that after getting subij, subji, and inter,
+														// we should delete the original (TODO determine if that's a good
+														// idea and implement)
+														// even if  union is usesd, it would be better in a seperate loop
+														// because it's potential run time is much longer than the others
+						region _subij = (*ri).subtract(*rj);
+						region _subji = (*rj).subtract(*ri);
 						add_region(_inter);
 						//add_region(_union);
 						add_region(_subij);
@@ -93,8 +122,10 @@ namespace ms {
 					}
 				}
 			}
-			trim_regions();
-		} while (old_regions != regions);
+
+		}
+		assert_each_trim();
+		assert_norepeat();
 
 		return regions.size() - size;
 	}
@@ -111,23 +142,24 @@ namespace ms {
 
 		size_t initial_size = regions.size();
 
-		for (unsigned int i = 0; i < regions.size();) {
-			if (regions[i].size() != 0) {
-				regions[i].trim(); //can never make a size 0
-				++i;
+		for (literator ri = regions.begin(); ri != regions.end();) {
+			if ((*ri).size() != 0) {
+				(*ri).trim(); //can never make a size 0 from nonzero
+				++ri;
 			}
 			else {
-				regions.erase(regions.begin() + i);
+				regions.erase(ri);
 			}
 		}
-		for (int i = 0; i < (int) regions.size() - 1; ++i) {
-			for (unsigned int j = i + 1; j < regions.size();) {
-				if (regions[i].samearea(regions[j])) {
-					regions[i] = regions[i].merge(regions[j]);
-					regions.erase(regions.begin() + j);
+		if(!regions.empty())//otherwise the conditional will never be true
+		for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
+			for(literator rj = it_add(rj, 1); rj != regions.end();) {
+				if ((*ri).samearea(*rj)) {
+					*ri = (*ri).merge(*rj);
+					regions.erase(rj);
 				}
 				else {
-					++j;
+					++rj;
 				}
 			}
 		}
@@ -143,44 +175,104 @@ namespace ms {
 	 *
 	 */
 	int solver::add_region(const region& arg) {
-		for (unsigned int i = 0; i < regions.size(); ++i) {
-			if (regions[i].size() == arg.size()) {
-				regions[i] = regions[i].merge(arg);
+		if(arg.size() == 0)
+			return 0;
+		for (literator ri = regions.begin(); ri != regions.end(); ++ri) {
+			if ((*ri).size() == arg.size()) {
+				*ri = (*ri).merge(arg);
+				(*ri).assert_nonempty();
 				return 0;
 			}
 		}
 		return 1;
 	}
 
-	/* int solver::find_conglomerate()
+	bool ispair(const region& check) {
+		return check.size() == 2 && check.min() == 1 && check.max() == 1;
+	}
+
+	bool hasoverlap(const std::vector<region>& chain, const region& check) {
+		for(const region& reg : chain) {
+			if(check.has_intersect(reg))
+				return true;
+		}
+		return false;
+	}
+
+	/* std::vector<region> one_chain(std::list<region> arg)
+	 * 
+	 * returns a vector containing all regions in a chain that starts at arg.front()
+	 * all regions in arg that are put into chains are removed from arg
+	 * 
+	 */
+	std::vector<region> one_chain(std::list<region>& arg) {
+		bool found = true;
+		std::vector<region> chain;
+
+		while(found) {
+			found = false;
+			for(literator iter = arg.begin(); iter != arg.end();) {
+				if(ispair(*iter) && (hasoverlap(chain,*iter) || chain.empty())) {
+					chain.push_back(*iter);
+					iter = arg.erase(iter);
+					found = 1;
+				} else {
+					++iter;
+				}
+			}
+		}
+
+		return chain;
+	}
+
+	/* std::vector<region> solver::find_chains() const
+	 *
+	 * a chain is a series of regions that have size 2 and 1 bomb that overlap eachother
+	 * no two complete chains overlap
+	 * 
+	 */
+	int solver::find_chains() {
+		std::list<region> unchecked_regions;
+		chains.clear();
+
+		for(region& r : regions) {
+			unchecked_regions.push_back(r);
+		}
+
+		while(!unchecked_regions.empty()) {
+			if(ispair(unchecked_regions.front())) {
+				chains.push_back(one_chain(unchecked_regions));
+			} else {
+				unchecked_regions.pop_front();
+			}
+		}
+
+		return 0;
+	}
+
+	/* int solver::find_conglomerate() const
 	 *
 	 *
 	 *
 	 *
 	 */
-	int solver::find_conglomerate() {
-		conglomerates.push_back(region());
-		std::vector<region> starts = find_best_starting_points(conglomerates[0]);
-		for (unsigned int i = 1; i < starts.size(); ++i) {
-			conglomerates.push_back(conglomerates[0]);
-		}
-		for (unsigned int i = 1; i < starts.size(); ++i) {
-			work_from_starting_point(conglomerates[0], starts[0]);
-		}
+	int solver::find_conglomerate(){
+
 		return 0;
 	}
-
-
 
 	int solver::find_regions() {
 		trim_regions();
 		find_base_regions();
 		find_aux_regions();
-		find_conglomerate();
-		leftover_region();
-		return 0;
+		if(!safe_queue.empty())
+			return 0;
+
+		find_chains();
+		find_leftover();
+		
+		return 1;
 	}
-	
 
 
 }
