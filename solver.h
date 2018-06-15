@@ -11,21 +11,44 @@ namespace ms {
 
 	class spinoff;
 
+	/**
+	 * 
+	 * The `solver` class is used to solve minesweeper games.
+	 * 
+	 * It can use a grid of any size, and can either use a pre-made grid or generate one itself.
+	 * 
+	 * It may be used in tandem with user controls
+	 * 
+	 * 
+	 * 
+	 * 
+	 **/
 	class solver {
 	public:
 		solver(const grid& g);
 		solver(unsigned int height, unsigned int width, unsigned int bombs);
 		
-		int solve();//runs until win or loss, returns gamestate
-		int step();//takes one turn, returns gamestate
-		int solve_certain();//runs until there is a chance it may fail (does nothing if board is not started)
-		int step_certain();//steps iff it will not fail
+		/**Runs until win or loss. \n Returns gamestate.*/
+		int solve();
+		/**Takes one turn.\n Returns the cell opened/flagged.*/
+		rc_coord step();
+		/**Runs until there is a chance it may fail (does nothing if board is not started). \n Returns the number of steps taken.*/
+		int solve_certain();
+		/**Steps iff the solver is certain it will not fail (does nothing if the board is not started). \n Returns the cell opened/flagged, or { -1,-1 } if it does not open a cell*/
+		rc_coord step_certain();
 
+		/**Forces solver to open a cell*/
 		int manual_open();
+		/**Forces solver to flag a cell, and treat it as a bomb for all future calculations. This may result in errors further on if it is incorrect.*/
 		int manual_flag();
 
-		const grid get_grid() { return grid(g, SURFACE_COPY); } //only on surface, so cannot be used to copy the game
+		/**Returns the internal `grid`'s gamestate*/
+		int gamestate() { return g.gamestate(); }
 
+		/**Returns a copy of the internal grid. Only copied on surface, so cannot be used to copy the game*/
+		grid view_grid() const { return grid(g, SURFACE_COPY); } 
+		/**Returns a complete copy of the games internal grid.*/
+		grid get_grid() const { return grid(g, FULL_COPY); } 
 	protected:
 		std::list<region> regions;
 		std::list<rc_coord> safe_queue;

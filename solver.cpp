@@ -1,4 +1,5 @@
 #include "solver.h"
+#include <stdexcept>
 
 namespace ms {
 
@@ -32,30 +33,44 @@ namespace ms {
 #endif
 
 
-	/* solver::solver(grid * g)
+	/**
 	 *
-	 * copies grid, all other members default initialize
+	 * Copies grid, all other members default initialize
 	 *
-	 */
+	 **/
 	solver::solver(const grid& start) : g(start, FULL_COPY) {
 		
 	}
 
+	/**
+	 * 
+	 * Initializes the internal grid with the given parameters
+	 * 
+	 **/
+	solver::solver(unsigned int height, unsigned int width, unsigned int bombs) : g(height,width,bombs) {
+		
+	}
 
-	/* int solver::find_base_regions()
+
+	/**
 	 *
-	 * find the areas around each number where there could be bombs.
-	 * such places must fit the following criteria:
+	 * Find the areas around each number where there could be bombs.
+	 * Such places must fit the following criteria:
+	 * 
 	 * --on the grid
+	 * 
 	 * --not not flagged or opened (so are hidden or questionmarked)
+	 * 
 	 * --adjacent to the given square
 	 *
-	 * determine in each case how many bombs there are
-	 * this will be exact, so region.min == region.max
+	 * Determine in each case how many bombs there are.
+	 * This will be exact, so `region.min == region.max`
 	 *
-	 * store the results in this.regions
+	 * Store the results in `this.regions`
+	 * 
+	 * Complexity \f$O(N^2)\f$
 	 *
-	 */
+	 **/
 	int solver::find_base_regions() {
 		for (unsigned int r = 0; r < g.height(); ++r) {
 			for (unsigned int c = 0; c < g.width(); ++c) {
@@ -86,15 +101,24 @@ namespace ms {
 		return 0;
 	}
 
-	/* int solver::find_aux_regions()
+	/**
 	 *
-	 * calculate the intersection of each pair of regions
-	 * --if empty (size == 0), discard it
-	 * --if nonempty, add the intersection to this.aux_regions,
-	 *     add the pair to this.region_pairs
+	 * Find all regions that can be deduced from the existing regions.
+	 * 
+	 * Calculate the intersection of each pair of regions
+	 * 
+	 * --if empty, discard it
+	 * 
+	 * --if nonempty, add the intersection and subraction to `this.aux_regions`
 	 *
-	 * returns the number of regions added
-	 */
+	 * Note that 
+	 * 
+	 * Returns the number of regions added (note that it does not include modified regions, only added)
+	 * 
+	 * Complexity of the inner loop upper bound \f$O(N^4)\f$, lower bound \f$\Omega (N^2)\f$.
+	 * Outer loop's complexity is nontrivial, runs until it cannot make any more aux regions.
+	 * 
+	 **/
 	int solver::find_aux_regions() {
 		trim_regions();
 		int size = regions.size();
@@ -130,13 +154,16 @@ namespace ms {
 		return regions.size() - size;
 	}
 
-	/* int solver::trim_regions()
+	/**
 	 *
-	 * removes all empty regions
-	 * merges regions that have the same number of cells
-	 * returns the number of regions removed (two being merged is one being removed)
+	 * Removes all empty regions.
+	 * Merges regions that have the same number of cells.
+	 * 
+	 * Returns the number of regions removed (2 being merged counted as 1 being removed)
+	 * 
+	 * complexity \f$O(N^2)\f$
 	 *
-	 */
+	 **/
 	int solver::trim_regions() {
 		region zero;
 
@@ -167,23 +194,26 @@ namespace ms {
 		return initial_size - regions.size();
 	}
 
-	/* int solver::add_region(region arg)
+	/**
 	 *
-	 * checks if this.regions contains a region with the same number of cells as arg
-	 * if it does, merge it with that cell and return 0
-	 * else add arg to this.regions and return 1
+	 * Adds a region to the list of regions, merging if a region already exists covering the same area.
+	 * 
+	 * Returns 0 if merging occurs, otherwise returns 1. 
 	 *
-	 */
+	 * Complexity \f$O(N)\f$
+	 * 
+	 **/
 	int solver::add_region(const region& arg) {
 		if(arg.size() == 0)
 			return 0;
 		for (literator ri = regions.begin(); ri != regions.end(); ++ri) {
-			if ((*ri).size() == arg.size()) {
+			if (arg.samearea(*ri)) {
 				*ri = (*ri).merge(arg);
 				(*ri).assert_nonempty();
 				return 0;
 			}
 		}
+		regions.push_back(arg);
 		return 1;
 	}
 
@@ -199,12 +229,12 @@ namespace ms {
 		return false;
 	}
 
-	/* std::vector<region> one_chain(std::list<region> arg)
+	/**
 	 * 
 	 * returns a vector containing all regions in a chain that starts at arg.front()
 	 * all regions in arg that are put into chains are removed from arg
 	 * 
-	 */
+	 **/
 	std::vector<region> one_chain(std::list<region>& arg) {
 		bool found = true;
 		std::vector<region> chain;
@@ -225,12 +255,14 @@ namespace ms {
 		return chain;
 	}
 
-	/* std::vector<region> solver::find_chains() const
+	/**
 	 *
-	 * a chain is a series of regions that have size 2 and 1 bomb that overlap eachother
+	 * a chain is a series of regions that both:
+	 *     have exactly 1 bomb
+	 *     have exactly one cell that does not overlap
 	 * no two complete chains overlap
 	 * 
-	 */
+	 **/
 	int solver::find_chains() {
 		std::list<region> unchecked_regions;
 		chains.clear();
@@ -250,12 +282,12 @@ namespace ms {
 		return 0;
 	}
 
-	/* int solver::find_conglomerate() const
+	/**
 	 *
 	 *
 	 *
 	 *
-	 */
+	 **/
 	int solver::find_conglomerate(){
 
 		return 0;
@@ -265,7 +297,7 @@ namespace ms {
 		trim_regions();
 		find_base_regions();
 		find_aux_regions();
-		if(!safe_queue.empty())
+		if(!(safe_queue.empty() && bomb_queue.empty()))
 			return 0;
 
 		find_chains();
@@ -275,6 +307,65 @@ namespace ms {
 	}
 
 
+	/**
+	 * 
+	 * to be called when a safe cell is opened
+	 * removes it from all regions, so it can be forgotten about and free up memory
+	 * skips regions that do not have the cell
+	 * throws an error if a region has the cell, but removal is impossible (has no safe)
+	 * 
+	 * all empty cells are removed
+	 * 
+	 **/
+	int solver::remove_safe_from_all_regions(rc_coord cell) {
+		for(literator ri = regions.begin(); ri != regions.end();) {
+			switch((*ri).remove_safe(cell)) {
+			case 0://success
+			case 1://not in region
+				if((*ri).empty()) {
+					ri = regions.erase(ri);
+				} else {
+					++ri;
+				}
+
+			case 2://we thought we knew this was wrong
+				throw std::logic_error("Attempted to remove a safe space from a region that has no safe space");
+			default://impossible
+				throw std::logic_error("Impossible return value from remove_safe");
+			}
+		}
+		return 0;
+	}
+
+	/**
+	 * 
+	 * to be called when a bomb cell is opened
+	 * removes it from all regions, so it can be forgotten about and free up memory
+	 * skips regions that do not have the cell
+	 * throws an error if a region has the cell, but removal is impossible (has no bomb)
+	 * 
+	 * all empty cells are removed
+	 * 
+	 **/
+	int solver::remove_bomb_from_all_regions(rc_coord cell) {
+		for(literator ri = regions.begin(); ri != regions.end();) {
+			switch((*ri).remove_bomb(cell)) {
+			case 0://success
+			case 1://not in region
+				if((*ri).empty()) {
+					ri = regions.erase(ri);
+				} else {
+					++ri;
+				}
+
+			case 2://we thought we knew this was wrong
+				throw std::logic_error("Attempted to remove a bomb space from a region that has no bomb space");
+			default://impossible
+				throw std::logic_error("Impossible return value from remove_bomb");
+			}
+		}
+		return 0;
+	}
 }
 
 
