@@ -8,40 +8,87 @@
 namespace ms {
 
 
-#ifdef TESTMODE
-	time_t get_seed(){
-		return time(NULL);
-	}
-#else
-	time_t get_seed(){
-		return 14789032;
-	}
-#endif
-
-	
-
-	enum  cell : char {
-		ms_0 = 0, ms_1 = 1, ms_2 = 2, ms_3 = 3, ms_4 = 4,
-		ms_5 = 5, ms_6 = 6, ms_7 = 7, ms_8 = 8, ms_bomb = 9,
-		ms_hidden = 10, ms_question = 11, ms_flag = 12, 
-		ms_non_bomb = 13, //not a bomb, but specific number not known. only used by ms::spingrid
-		ms_error = -1
-	};
-
-	enum gamestate {
-		RUNNING, WON, LOST, NEW
-	};
-
-	enum grid_copy_type {
-		SURFACE_COPY, 
-		FULL_COPY, 
-		HIDDEN_COPY,
-		PARAM_COPY
-	};
-
 	class spingrid;
 
+	/**
+	 * 
+	 * Contains data and methods required to play a minesweeper game.
+	 * 
+	 **/
 	class grid {
+	public:
+
+		/**
+		 * 
+		 * `cell`s hold the values of individual cells of grids.
+		 * 
+		 **/
+		enum  cell : char {
+			/**0 bombs surround this cell and this cell is not a bomb**/
+			ms_0 = 0, 
+			/**1 bombs surround this cell and this cell is not a bomb**/
+			ms_1 = 1, 
+			/**2 bombs surround this cell and this cell is not a bomb**/
+			ms_2 = 2, 
+			/**3 bombs surround this cell and this cell is not a bomb**/
+			ms_3 = 3, 
+			/**4 bombs surround this cell and this cell is not a bomb**/
+			ms_4 = 4, 
+			/**5 bombs surround this cell and this cell is not a bomb**/
+			ms_5 = 5, 
+			/**6 bombs surround this cell and this cell is not a bomb**/
+			ms_6 = 6, 
+			/**7 bombs surround this cell and this cell is not a bomb**/
+			ms_7 = 7, 
+			/**8 bombs surround this cell and this cell is not a bomb**/
+			ms_8 = 8, 
+			/**This cell is a bomb**/
+			ms_bomb = 9, 
+			/**The contents of this cell are hidden from the user**/
+			ms_hidden = 10, 
+			/**The contents of this cell are hidden from the user. The users may mark a cell as ms_question, but it has no designated meaning**/
+			ms_question = 11, 
+			/**The contents of this cell are hidden from the user, but the user has marked it as a bomb. It cannot be opened until unmarked. **/
+			ms_flag = 12, 
+			/**Not a bomb, but specific number not known. Only used by ms::spingrid.**/
+			ms_non_bomb = 13, 
+			/**This indicates some sort of error has occured. See specific function details for more info.**/
+			ms_error = -1 
+		};
+
+		/**
+		 * 
+		 * `gamestate` indicates the progress of a grid in its game
+		 * 
+		 **/
+		enum gamestate {
+			/**No bombs are open, some but not all non-bomb cells are open**/ 
+			RUNNING,
+			/**No bombs are open, all-nonbomb cells are open**/
+			WON, 
+			/**A bomb is open**/
+			LOST, 
+			/**No cells are open**/
+			NEW 
+		};
+
+		/**
+		 * 
+		 * Used for passing into `grid`'s copy constructor. Indicates how it should be copied.
+		 * 
+		 **/
+		enum grid_copy_type {
+			/**Only copy the visible contents of the grid. Any reference to an underlying grid in this copy is meaningless. **/
+			SURFACE_COPY, 
+			/**Make an exact copy of the input grid.**/
+			FULL_COPY, 
+			/**Copy the contents of a grid, but make all visible cells hidden. Reset the gamestate to NEW. **/
+			HIDDEN_COPY, 
+			/**Copy the `width`, `height`, and `bombs` parameters and create a new grid.**/
+			PARAM_COPY 
+		};
+
+
 	protected:
 		friend spingrid;
 		int init(unsigned int row, unsigned int col);
@@ -56,8 +103,14 @@ namespace ms {
 		char ** _grid;
 		char ** _visgrid;
 		gamestate _gs;
-		class grid_rng {
-		public:
+		struct grid_rng {
+		time_t get_seed(){
+#ifdef TESTMODE
+			return 14789032;
+#else
+			return time(NULL);
+#endif
+		}
 			std::mt19937 mt;
 			grid_rng() { mt.seed(get_seed()); }
 		} rng;
@@ -72,18 +125,22 @@ namespace ms {
 		gamestate gamestate() const { return _gs; }
 		bool iscontained(int row, int col) const;
 
+		/**Returns the visible contents of a cell. Return `ms_error` if the specified cell is not contained in the grid.**/
 		cell get(unsigned int row, unsigned int col) const { 
 			if (iscontained(row, col)) return (cell)_visgrid[row][col]; else return ms_error; 
 		}
 		
-		//toggles flag status none=>flagged=>question=>none //returns 0 on success, 1 on failure (out of bounds or not initialized)
 		int flag(unsigned int row, unsigned int col);
-		//returns number of cells openned (1 if hidden and nonzero, X if a number surrounded by the correct number of bombs or zero, 0 otherwise, -1 on error (out of bounds or not initialized))
+		int setflag(unsigned int row, unsigned int col, cell flag);
 		int open(unsigned int row, unsigned int col);
 		
 		void reset();
 
 		~grid();
+
+
+
+
 	};
 }
 

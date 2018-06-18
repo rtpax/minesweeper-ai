@@ -7,6 +7,11 @@
 #include "grid.h"
 #include "region.h"
 
+/**
+ * 
+ * All classes and functions for the sweeper application are contained in this namespace. 
+ * 
+ **/
 namespace ms {
 
 	class spinoff;
@@ -34,21 +39,19 @@ namespace ms {
 		rc_coord step();
 		/**Runs until there is a chance it may fail (does nothing if board is not started). \n Returns the number of steps taken.*/
 		int solve_certain();
-		/**Steps iff the solver is certain it will not fail (does nothing if the board is not started). \n Returns the cell opened/flagged, or { -1,-1 } if it does not open a cell*/
+		/**Steps iff the solver is certain it will not fail (does nothing if the board is not started). \n Returns the cell opened/flagged, or { 0xffff,0xffff } if it does not open a cell*/
 		rc_coord step_certain();
 
-		/**Forces solver to open a cell*/
-		int manual_open();
-		/**Forces solver to flag a cell, and treat it as a bomb for all future calculations. This may result in errors further on if it is incorrect.*/
-		int manual_flag();
+		int manual_open(rc_coord cell);
+		int manual_flag(rc_coord cell);
 
 		/**Returns the internal `grid`'s gamestate*/
 		int gamestate() { return g.gamestate(); }
 
 		/**Returns a copy of the internal grid. Only copied on surface, so cannot be used to copy the game*/
-		grid view_grid() const { return grid(g, SURFACE_COPY); } 
+		grid view_grid() const { return grid(g, grid::SURFACE_COPY); } 
 		/**Returns a complete copy of the games internal grid.*/
-		grid get_grid() const { return grid(g, FULL_COPY); } 
+		grid get_grid() const { return grid(g, grid::FULL_COPY); } 
 	protected:
 		std::list<region> regions;
 		std::list<rc_coord> safe_queue;
@@ -68,6 +71,10 @@ namespace ms {
 		int find_aux_regions();
 		int find_chains();
 		int find_leftover();
+
+		int fill_queue();
+		int add_to_safe_queue(rc_coord to_add);
+		int add_to_bomb_queue(rc_coord to_add);
 		int remove_safe_from_all_regions(rc_coord cell);
 		int remove_bomb_from_all_regions(rc_coord cell);
 

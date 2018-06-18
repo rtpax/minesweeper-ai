@@ -22,18 +22,18 @@ namespace ms {
 		std::vector<rc_coord> _cells;
 		unsigned int _max, _min;
 	public:
-		/****/
+		/**The maximum number of bombs that could possibly be in the region.\n Complexity \f$O(1)\f$**/
 		unsigned int max() const { return _max; }
-		/****/
+		/**The minimum number of bombs that could possibly be in the region.\n Complexity \f$O(1)\f$**/
 		unsigned int min() const { return _min; }
-		/****/
+		/**Set the max and the min. Will fail if attempting to set an impossible value (min > max or max > size) and return 1. Otherwise returns 0.\n Complexity \f$O(1)\f$*/
 		int set_range(unsigned int min, unsigned int max) { if(min > max || max > _cells.size()) return 1; _min = min; _max = max; return 0; }
-		/****/
+		/**Set the max and min to the same value. Will fail if attempting to set an impossible value and return 1. Otherwise returns 0.\n Complexity \f$O(1)\f$**/
 		int set_count(unsigned int minmax) { if(minmax > _cells.size()) return 1; _min = _max = minmax; return 0; }
 
-		/**Default constructor. Contains 0 cells. `max = min = 0`. **/
-		region() {}
-		/**Copy constructor.**/
+		/**Default constructor. Contains 0 cells. `max = min = 0`.\n Complexity \f$O(1)\f$. **/
+		region() { set_count(0); }
+		/**Copy constructor.\n Complexity \f$O(N)\f$. **/
 		region(const region& copy) { _cells = copy._cells; _max = copy._max; _min = copy._min; }
 
 		region intersect(const region& arg) const;
@@ -64,7 +64,12 @@ namespace ms {
 			return *this = merge(arg);
 		}
 
-		/**Returns true if the cells are the same area and have the same `min` and `max`, false otherwise. Note that it does not check if both are trim. Follows the same rules as region::samearea for determining if all cells are the same.**/
+		/**
+		 * Returns true if the cells are the same area and have the same `min` and `max`, false otherwise. 
+		 * Note that it does not check if both are trim. Follows the same rules as region::samearea for determining if all cells are the same.
+		 * 
+		 * Complexity \f$O(N^2)\f$.
+		 **/
 		bool operator==(const region& comp) const { return samearea(comp) && _min == comp._min && _max == comp._max; }
 		/**Returns the opposite of `region::operator==`.**/
 		bool operator!=(const region& comp) const { return !(*this == comp); }
@@ -72,15 +77,23 @@ namespace ms {
 		bool samearea(const region& comp) const;
 		bool has_intersect(const region& chuck) const;
 		int addcell(rc_coord rc);
-		int forcecell(rc_coord rc);
+		/**Adds a cell to a region. Does not check for duplicates. The resulting region is not guaranteed to be trim.\n Complexity \f$O(1)\f$**/
+		int forcecell(rc_coord rc) { _cells.push_back(rc); return 1; }
 		int remove_bomb(rc_coord bomb);
 		int remove_safe(rc_coord safe);
 		int trim();
 		bool is_trim() const;
+		/**Returns the number of cells in the region.\n Complexity \f$O(1)\f$.**/
 		size_t size() const { return _cells.size(); }
+		/**Returns true if the region has no cells, false otherwise.\n Complexity \f$O(1)\f$.**/
 		bool empty() const { return _cells.empty(); }
+		/**Accesses the element at the specified index.\n Complexity \f$O(1)\f$.**/
 		rc_coord& operator[](int index) { return _cells[index]; }
+		/**Accesses the element at the specified index. The reference returned by this is const, for the nonconst version see region::operator[].\n Complexity \f$O(1)\f$.**/
 		const rc_coord& operator[](int index) const { return _cells[index]; }
+		std::vector<rc_coord>::iterator begin() { return _cells.begin(); }
+		std::vector<rc_coord>::iterator end() { return _cells.end(); }
+
 #ifdef DEBUG
 		int assert_trim() const { region test = *this; test.trim(); assert(test == *this); return 0; }
 		int assert_reasonable() const { assert(_min <= _max && _max <= size()); return 0; }

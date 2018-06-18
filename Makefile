@@ -18,12 +18,7 @@ spinoff_DEP=spinoff.h $(solver_DEP) $(spingrid_DEP)
 main_DEP=solver.h spinoff.h
 grid_DEP=grid.h
 
-define newline
-
-
-endef
-
-OUT=minesweep.exe
+OUT=sweep.exe
 
 all: $(OUT)
 

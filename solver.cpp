@@ -38,7 +38,7 @@ namespace ms {
 	 * Copies grid, all other members default initialize
 	 *
 	 **/
-	solver::solver(const grid& start) : g(start, FULL_COPY) {
+	solver::solver(const grid& start) : g(start, grid::FULL_COPY) {
 		
 	}
 
@@ -56,17 +56,16 @@ namespace ms {
 	 *
 	 * Find the areas around each number where there could be bombs.
 	 * Such places must fit the following criteria:
-	 * 
-	 * --on the grid
-	 * 
-	 * --not not flagged or opened (so are hidden or questionmarked)
-	 * 
-	 * --adjacent to the given square
+	 *   - on the grid
+	 *   - not not flagged or opened (so are hidden or questionmarked)
+	 *   - adjacent to the given square
 	 *
 	 * Determine in each case how many bombs there are.
-	 * This will be exact, so `region.min == region.max`
+	 * This will be exact, so `region.min == region.max` for all regions generated.
 	 *
 	 * Store the results in `this.regions`
+	 * 
+	 * Guaranteed to create trim regions, not cause two regions of the same area to be added, and not cause empty regions to be added.
 	 * 
 	 * Complexity \f$O(N^2)\f$
 	 *
@@ -81,11 +80,11 @@ namespace ms {
 						if (!(rr == 0 && cc == 0) && g.iscontained(r + rr, c + cc) &&
 							g.get(r + rr, c + cc) <= 8 && g.get(r + rr, c + cc) > 0) {
 							switch (g.get(r + rr, c + cc)) {
-							case ms_hidden:
-							case ms_question:
+							case grid::ms_hidden:
+							case grid::ms_question:
 								reg.addcell(rc_coord(r + rr, c + cc));
 								break;
-							case ms_flag:
+							case grid::ms_flag:
 								++num_flags;
 								break;
 							default:
@@ -94,7 +93,8 @@ namespace ms {
 
 						}
 				reg.set_count(g.get(r, c) - num_flags);
-				regions.push_back(reg);
+				if(!reg.empty())
+					add_region(reg);
 			}
 		}
 
@@ -106,12 +106,8 @@ namespace ms {
 	 * Find all regions that can be deduced from the existing regions.
 	 * 
 	 * Calculate the intersection of each pair of regions
-	 * 
-	 * --if empty, discard it
-	 * 
-	 * --if nonempty, add the intersection and subraction to `this.aux_regions`
-	 *
-	 * Note that 
+	 *   - if empty, discard it
+	 *   - if nonempty, add the intersection and subraction to `this.aux_regions`
 	 * 
 	 * Returns the number of regions added (note that it does not include modified regions, only added)
 	 * 
@@ -123,20 +119,15 @@ namespace ms {
 		trim_regions();
 		int size = regions.size();
 
-		for (int startsize = size, endsize = size; startsize == endsize; endsize = regions.size()) { //loops as long as nothing was added
+		for (int startsize = 0, endsize = size; startsize != endsize; endsize = regions.size()) { //loops as long as nothing was added
 			startsize = endsize;
 
-			if(!regions.empty())//otherwise the conditional will never be true
+			if(!regions.empty())//otherwise the conditional will never be false
 			for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
 				for(literator rj = it_add(ri, 1); rj != regions.end(); ++rj) {
 					region _inter = (*rj).intersect(*rj);
 					if (_inter.size() > 0) {
-						//region _union = ri.unite(rj);	// can't think of any useful application for this knowledge
-														// which implies that after getting subij, subji, and inter,
-														// we should delete the original (TODO determine if that's a good
-														// idea and implement)
-														// even if  union is usesd, it would be better in a seperate loop
-														// because it's potential run time is much longer than the others
+						//region _union = ri.unite(rj);
 						region _subij = (*ri).subtract(*rj);
 						region _subji = (*rj).subtract(*ri);
 						add_region(_inter);
@@ -159,7 +150,7 @@ namespace ms {
 	 * Removes all empty regions.
 	 * Merges regions that have the same number of cells.
 	 * 
-	 * Returns the number of regions removed (2 being merged counted as 1 being removed)
+	 * Returns the number of regions removed (2 being merged counts as 1 being removed)
 	 * 
 	 * complexity \f$O(N^2)\f$
 	 *
@@ -175,10 +166,10 @@ namespace ms {
 				++ri;
 			}
 			else {
-				regions.erase(ri);
+				ri = regions.erase(ri);
 			}
 		}
-		if(!regions.empty())//otherwise the conditional will never be true
+		if(!regions.empty())//otherwise the conditional will never be false
 		for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
 			for(literator rj = it_add(rj, 1); rj != regions.end();) {
 				if ((*ri).samearea(*rj)) {
@@ -258,8 +249,9 @@ namespace ms {
 	/**
 	 *
 	 * a chain is a series of regions that both:
-	 *     have exactly 1 bomb
-	 *     have exactly one cell that does not overlap
+	 *   - have exactly 1 bomb
+	 *   - have exactly one cell that does not overlap
+	 * 
 	 * no two complete chains overlap
 	 * 
 	 **/
@@ -316,11 +308,15 @@ namespace ms {
 	 * 
 	 * all empty cells are removed
 	 * 
+	 * returns nonzero if the safe cell is found, otherwise returns 0
+	 * 
 	 **/
 	int solver::remove_safe_from_all_regions(rc_coord cell) {
+		int found = 0;
 		for(literator ri = regions.begin(); ri != regions.end();) {
 			switch((*ri).remove_safe(cell)) {
 			case 0://success
+				found = 1;
 			case 1://not in region
 				if((*ri).empty()) {
 					ri = regions.erase(ri);
@@ -334,7 +330,7 @@ namespace ms {
 				throw std::logic_error("Impossible return value from remove_safe");
 			}
 		}
-		return 0;
+		return found;
 	}
 
 	/**
@@ -346,11 +342,15 @@ namespace ms {
 	 * 
 	 * all empty cells are removed
 	 * 
+	 * returns nonzero if the bomb cell is found, otherwise returns 0
+	 * 
 	 **/
 	int solver::remove_bomb_from_all_regions(rc_coord cell) {
+		int found = 0;
 		for(literator ri = regions.begin(); ri != regions.end();) {
 			switch((*ri).remove_bomb(cell)) {
 			case 0://success
+				found = 1;
 			case 1://not in region
 				if((*ri).empty()) {
 					ri = regions.erase(ri);
@@ -364,8 +364,142 @@ namespace ms {
 				throw std::logic_error("Impossible return value from remove_bomb");
 			}
 		}
+		return found;
+	}
+
+	int solver::find_leftover() {
 		return 0;
 	}
+
+	/**
+	 * 
+	 * Forces solver to flag a cell, and treat it as a bomb for all future calculations. 
+	 * This may result in errors and exceptions further on if it is incorrect.
+	 *  
+	 **/
+	int solver::manual_flag(rc_coord arg) {
+		g.flag(arg.row, arg.col);
+
+		if(g.get(arg.row, arg.col)) {
+			remove_bomb_from_all_regions(arg);
+			return 0;
+		} else {
+			return 1;
+		}
+	}
+
+	/**
+	 * 
+	 * Forces solver to open a cell.
+	 * 
+	 **/
+	int solver::manual_open(rc_coord arg) {
+		switch(g.open(arg.row, arg.col)) {
+		case -1:
+			throw std::invalid_argument("Could not open the cell");
+		case 0:
+			return 0;
+		case 1:
+			remove_safe_from_all_regions(arg);
+			return 1;
+		default: //multiple cells opened, remove all open cells
+			int ret = 0;
+			for(unsigned int r = 0; r < g.height(); ++r) {
+				for(unsigned int c = 0; c < g.width(); ++c) {
+					grid::cell curcell = g.get(r,c);
+					if((curcell >= grid::ms_0 && curcell <= grid::ms_8) || curcell == grid::ms_non_bomb) {
+						ret += remove_safe_from_all_regions(rc_coord{r,c});
+					}
+				}
+			}
+			return ret;	
+		}
+	}
+
+	/**
+	 * 
+	 * Finds all regions that guarantee that the contained cells are
+	 * safe or bombs and adds them to the queues if they are not already.
+	 * 
+	 **/
+	int solver::fill_queue() {
+		for(region& check : regions) {
+			if(check.size() == check.min()) { //implies size == max == min for all valid state regions
+				for(rc_coord bomb : check) {
+					add_to_bomb_queue(bomb);
+				}
+			} else if (check.max() == 0) {
+				for(rc_coord safe : check) {
+					add_to_safe_queue(safe);
+				}				
+			}
+		}
+		return 0;
+	}
+
+	/**
+	 * 
+	 * Adds the input cell to the back of the bomb queue if it is not already present.
+	 * 
+	 * Returns 1 if `to_add` is added, 0 if not.
+	 * 
+	 **/
+	int solver::add_to_bomb_queue(rc_coord to_add) {
+		for(const rc_coord& check : bomb_queue) {
+			if(to_add == check)
+				return 0;
+		}
+		bomb_queue.push_back(to_add);
+		return 1;
+	}
+
+	/**
+	 * 
+	 * Adds the input cell to the back of the safe queue if it is not already present.
+	 * 
+	 * Returns 1 if `to_add` is added, 0 if not.
+	 * 
+	 **/
+	int solver::add_to_safe_queue(rc_coord to_add) {
+		for(const rc_coord& check : safe_queue) {
+			if(to_add == check)
+				return 0;
+		}
+		safe_queue.push_back(to_add);
+		return 1;
+	}
+
+
+
+
+
+
+	rc_coord solver::step_certain() {
+		if(g.gamestate() != grid::RUNNING) {
+			return rc_coord{ 0xffff,0xffff };
+		}
+
+		if(bomb_queue.empty() && safe_queue.empty()) {
+			find_regions();
+			fill_queue();
+		}
+
+		if(!bomb_queue.empty()) {
+			rc_coord ret = bomb_queue.front();
+			g.flag(ret.row, ret.col);
+			bomb_queue.pop_front();
+			return ret;
+		} else if(!safe_queue.empty()) {
+			rc_coord ret = safe_queue.front();
+			g.open(ret.row, ret.col);
+			safe_queue.pop_front();
+			return ret;
+		} else {
+			return rc_coord{ 0xffff,0xffff };
+		}
+	}
+
+
 }
 
 

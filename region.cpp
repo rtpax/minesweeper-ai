@@ -61,7 +61,6 @@ namespace ms {
 	 * 
 	 **/
 	bool region::is_trim() const {
-		region test = *this;
 		for (int i = 0; i < (int)size() - 1; ++i) {
 			for (unsigned int j = i + 1; j < size(); ++j) {
 				if (_cells[i] == _cells[j]) {
@@ -79,7 +78,7 @@ namespace ms {
 	 * 
 	 * `arg` and `this` MUST be trim.
 	 * 
-	 * Complexity \f$O(N^2)\f$
+	 * Complexity \f$O(N \cdot M)\f$
 	 *
 	 **/
 	region region::intersect(const region& arg) const {
@@ -87,7 +86,7 @@ namespace ms {
 		for (unsigned int i = 0; i < size(); ++i) {
 			for (unsigned int j = 0; j < arg.size(); ++j) {
 				if (_cells[i] == arg[j]) {
-					ret._cells.push_back(_cells[i]);
+					ret.forcecell(_cells[i]);
 					break;
 				}
 			}
@@ -140,14 +139,14 @@ namespace ms {
 	 * 
 	 * `this` and `arg` MUST be trim
 	 * 
-	 * Complexity \f$O(N^2)\f$
+	 * Complexity \f$O(M \cdot (M + N))\f$ where M is the size of `arg` and N is the size of `this`.
 	 * 
 	 **/
 	region region::unite(const region& arg) const {
 		region ret;
 		int common = 0;
 		for (unsigned int i = 0; i < size(); ++i) {
-			ret._cells.push_back(_cells[i]);//no need for check repeats on adding to empty region
+			ret.forcecell(_cells[i]);//no need for check repeats on adding to empty region
 		}
 		for (unsigned int i = 0; i < arg.size(); ++i) {
 			if (!ret.addcell(arg[i]))
@@ -183,7 +182,7 @@ namespace ms {
 				}
 			}
 			if (!inarg)
-				ret._cells.push_back(_cells[i]);
+				ret.forcecell(_cells[i]);
 		}
 		int common = size() - ret.size();
 		int othersubsize = arg.size() - ret.size();
@@ -208,7 +207,7 @@ namespace ms {
 	 * (`max` = the smaller max, `min` = the larger min).
 	 * Otherwise returns an empty region
 	 * 
-	 * Complexity \f$O(1)\f$ if they cannot merge, \f$O(N)\f$ if they can
+	 * Complexity \f$O(1)\f$ if they cannot merge, \f$O(N)\f$ if they can merge
 	 *
 	 **/
 	region region::merge(const region& arg) const {
@@ -279,43 +278,59 @@ namespace ms {
 
 	}
 
-		/**
-		 * 
-		 * Returns true if the regions contain all of the same cells. 
-		 * Note that it does not check if both are trim, and will return 
-		 * true if one contains duplicates but are otherwise the same. 
-		 * 
-		 **/
-		bool region::samearea(const region& comp) const { 
-			std::vector<char> checkcomp(comp.size(), 0);
-			for(unsigned int i = 0; i < size(); ++i) {
-				bool hasj = 0;
-				for(unsigned int j = 0; j < comp.size(); ++j) {
-					if(_cells[i] == comp[j]) {
-						hasj = 1;
-						checkcomp[j] = 1;
-					}
-					break;
+	/**
+	 * 
+	 * Returns true if the regions contain all of the same cells. 
+	 * Note that it does not check if both are trim, and will return 
+	 * true if one contains duplicates but are otherwise the same. 
+	 * 
+	 * Complexity \f$O(N^2)\f$.
+	 * 
+	 **/
+	bool region::samearea(const region& comp) const { 
+		std::vector<char> checkcomp(comp.size(), 0);
+		for(unsigned int i = 0; i < size(); ++i) {
+			bool hasj = 0;
+			for(unsigned int j = 0; j < comp.size(); ++j) {
+				if(_cells[i] == comp[j]) {
+					hasj = 1;
+					checkcomp[j] = 1;
 				}
-				if(!hasj)
+				break;
+			}
+			if(!hasj)
+				return 0;
+		}
+
+		for(unsigned int j = 0; j < comp.size(); ++j) {
+			if(!checkcomp[j]) {
+				bool hasi = 0;
+				for(unsigned int i = 0; i < size(); ++i) {
+					if(_cells[i] == comp[j]) {
+						hasi = 1;
+					}
+				}
+				if(!hasi)
 					return 0;
 			}
+		}
 
-			for(unsigned int j = 0; j < comp.size(); ++j) {
-				if(!checkcomp[j]) {
-					bool hasi = 0;
-					for(unsigned int i = 0; i < size(); ++i) {
-						if(_cells[i] == comp[j]) {
-							hasi = 1;
-						}
-					}
-					if(!hasi)
-						return 0;
+		return 1;
+	}
+
+
+
+	bool region::has_intersect(const region& arg) const {
+		for (unsigned int i = 0; i < size(); ++i) {
+			for (unsigned int j = 0; j < arg.size(); ++j) {
+				if (_cells[i] == arg[j]) {
+					return 1;
 				}
 			}
-
-			return 1;
 		}
+
+		return 0;
+	}
 
 
 }
