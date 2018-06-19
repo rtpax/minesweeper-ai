@@ -157,7 +157,7 @@ namespace ms {
 	 * 
 	 * Toggles flag status none=>flagged=>question=>none.
 	 * 
-	 * Returns 0 on success, 1 on failure (out of bounds or not initialized).
+	 * Returns 0 on success, 1 on failure (out of bounds or not initialized or already opened).
 	 * 
 	 **/
 	int grid::flag(unsigned int row, unsigned int col) {
@@ -167,18 +167,41 @@ namespace ms {
 		switch (_visgrid[row][col]) {
 		case ms_hidden:
 			_visgrid[row][col] = ms_flag;
-			break;
+			return 0;
 		case ms_flag:
 			_visgrid[row][col] = ms_question;
-			break;
+			return 0;
 		case ms_question:
 			_visgrid[row][col] = ms_hidden;
-			break;
+			return 0;
 		default:
-			break;
+			return 1;
 		}
+	}
 
-		return 0;
+	/**
+	 * 
+	 * Sets the flag status of a cell.
+	 * 
+	 * Viable inputs for `flag` are: grid::cell::ms_hidden,ms_flag,ms_question
+	 * 
+	 * Returns 0 on success, 1 on failure (out of bounds or not initialized or already opened).
+	 * 
+	 **/
+	int grid::set_flag(unsigned int row, unsigned int col, cell flag) {
+		if (_gs != RUNNING || !iscontained(row, col) ||
+				(flag != ms_flag && flag != ms_hidden && flag != ms_question))
+			return 1;
+
+		switch (_visgrid[row][col]) {
+		case ms_hidden:
+		case ms_flag:
+		case ms_question:
+			_visgrid[row][col] = flag;
+			return 0;
+		default:
+			return 1;
+		}
 	}
 
 

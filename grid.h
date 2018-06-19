@@ -131,7 +131,7 @@ namespace ms {
 		}
 		
 		int flag(unsigned int row, unsigned int col);
-		int setflag(unsigned int row, unsigned int col, cell flag);
+		int set_flag(unsigned int row, unsigned int col, cell flag);
 		int open(unsigned int row, unsigned int col);
 		
 		void reset();

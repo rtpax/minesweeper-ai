@@ -1,9 +1,9 @@
 CC=gcc
 CXX=g++
 
-CPPFLAGS=-DDEBUG
+CPPFLAGS=-DDEBUG=2
 CFLAGS=-g -c -Wall
-CXXFLAGS=-g -c -Wall -Og
+CXXFLAGS=-g -c -Wall -O0 -fno-inline
 LDFLAGS=-g
 LDLIBS=
 

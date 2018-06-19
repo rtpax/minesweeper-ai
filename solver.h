@@ -58,6 +58,8 @@ namespace ms {
 		std::list<rc_coord> bomb_queue;
 
 		int clear_queue();
+		int apply_open(rc_coord cell);
+		int apply_flag(rc_coord cell);
 		
 		grid g;
 
@@ -88,9 +90,6 @@ namespace ms {
 
 		int find_guarantees();
 		int cleanup();
-
-		int assert_each_trim();
-		int assert_norepeat();
 
 
 	};

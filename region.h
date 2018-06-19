@@ -83,6 +83,7 @@ namespace ms {
 		int remove_safe(rc_coord safe);
 		int trim();
 		bool is_trim() const;
+		bool is_reasonable() const { return min() <= max() && max() <= size(); }
 		/**Returns the number of cells in the region.\n Complexity \f$O(1)\f$.**/
 		size_t size() const { return _cells.size(); }
 		/**Returns true if the region has no cells, false otherwise.\n Complexity \f$O(1)\f$.**/
@@ -95,13 +96,13 @@ namespace ms {
 		std::vector<rc_coord>::iterator end() { return _cells.end(); }
 
 #ifdef DEBUG
-		int assert_trim() const { region test = *this; test.trim(); assert(test == *this); return 0; }
-		int assert_reasonable() const { assert(_min <= _max && _max <= size()); return 0; }
-		int assert_nonempty() const { assert(size() != 0); return 0; }
+		#define assert_trim(arg) do{ region test = (arg); test.trim(); assert(test == (arg)); }while(0)
+		#define assert_reasonable(arg) do{ assert((arg).min() <= (arg).max() && (arg).max() <= (arg).size()); }while(0)
+		#define assert_nonempty(arg) do{ assert((arg).size() != 0); }while(0)
 #else
-		int assert_trim() const { return 0; }
-		int assert_reasonable() const { return 0; }
-		int assert_nonempty() const { return 0; }
+		#define assert_trim(arg)
+		#define assert_reasonable(arg)
+		#define assert_nonempty(arg)
 #endif
 	};
 }

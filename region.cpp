@@ -1,9 +1,16 @@
 ﻿#include "region.h"
+#include <stdio.h>
 
 namespace ms {
 	int maxint(int a, int b) { return a > b ? a : b; }
 	int minint(int a, int b) { return a < b ? a : b; }
 	int nonneg(int a) { return a > 0 ? a : 0; }
+
+#if DEBUG>1
+	#define debug_printf(...) printf(__VA_ARGS__)
+#else
+	#define debug_printf(...)
+#endif
 
 	/**
 	 *
@@ -40,7 +47,7 @@ namespace ms {
 		for (int i = 0; i < (int)size() - 1; ++i) {
 			for (unsigned int j = i + 1; j < size();) {
 				if (_cells[i] == _cells[j]) {
-					_cells.erase(_cells.begin() + 5);
+					_cells.erase(_cells.begin() + j);
 				}
 				else {
 					++j;
@@ -82,6 +89,9 @@ namespace ms {
 	 *
 	 **/
 	region region::intersect(const region& arg) const {
+		assert(is_trim() && "intersect");
+		assert(arg.is_trim() && "intersect");
+
 		region ret;
 		for (unsigned int i = 0; i < size(); ++i) {
 			for (unsigned int j = 0; j < arg.size(); ++j) {
@@ -100,6 +110,22 @@ namespace ms {
 			nonneg(_min - minint(subsize, _min)), 
 			nonneg(arg._min) - minint(argsubsize, arg._min)
 		);
+
+		if(!ret.is_reasonable()) {
+			debug_printf("{");
+			for(unsigned int i = 0; i < size(); ++i)
+				debug_printf("(%d,%d)",(*this)[i].row,(*this)[i].col);
+			debug_printf("}\\{");
+			for(unsigned int i = 0; i < arg.size(); ++i)
+				debug_printf("(%d,%d)",(arg)[i].row,(arg)[i].col);
+			debug_printf("} -> {");
+			for(unsigned int i = 0; i < ret.size(); ++i)
+				debug_printf("(%d,%d)",(ret)[i].row,(ret)[i].col);
+			debug_printf("}\n");
+			debug_printf("{%d : %d - %d}\\{%d : %d - %d} -> {%d : %d - %d}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
+		}
+		assert(ret.is_reasonable() && "intersect");
+		assert(ret.is_trim() && "intersect");
 
 		return ret;
 	}
@@ -143,6 +169,9 @@ namespace ms {
 	 * 
 	 **/
 	region region::unite(const region& arg) const {
+		assert(is_trim() && "unite");
+		assert(arg.is_trim() && "unite");
+
 		region ret;
 		int common = 0;
 		for (unsigned int i = 0; i < size(); ++i) {
@@ -156,6 +185,22 @@ namespace ms {
 		ret._max = minint(arg._max + _max - nonneg(_max - (size() - common)),
 			arg._max + _max - nonneg(arg._max - (arg.size() - common)));
 		ret._min = arg._min + _min - minint(minint(arg._min, _min), common);
+
+		if(!ret.is_reasonable()) {
+			debug_printf("{");
+			for(unsigned int i = 0; i < size(); ++i)
+				debug_printf("(%d,%d)",(*this)[i].row,(*this)[i].col);
+			debug_printf("}\\{");
+			for(unsigned int i = 0; i < arg.size(); ++i)
+				debug_printf("(%d,%d)",(arg)[i].row,(arg)[i].col);
+			debug_printf("} -> {");
+			for(unsigned int i = 0; i < ret.size(); ++i)
+				debug_printf("(%d,%d)",(ret)[i].row,(ret)[i].col);
+			debug_printf("}\n");
+			debug_printf("{%d : %d - %d}\\{%d : %d - %d} -> {%d : %d - %d}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
+		}
+		assert(ret.is_reasonable() && "unite");
+		assert(ret.is_trim() && "unite");
 
 		return ret;
 	}
@@ -172,6 +217,9 @@ namespace ms {
 	 * 
 	 **/
 	region region::subtract(const region& arg) const {
+		assert(is_trim() && "subtract");
+		assert(arg.is_trim() && "subtract");
+
 		region ret;
 		for (unsigned int i = 0; i < size(); ++i) {
 			bool inarg = 0;
@@ -185,17 +233,33 @@ namespace ms {
 				ret.forcecell(_cells[i]);
 		}
 		int common = size() - ret.size();
-		int othersubsize = arg.size() - ret.size();
+		int othersubsize = arg.size() - common;
 
 		int intersect_min_given_max_bombs =  maxint(
-			nonneg(_max - minint(ret.size(), _max)), 
-			nonneg(arg._max - minint(othersubsize, arg._max))
+			_max - minint(ret.size(), _max), 
+			arg._min - minint(othersubsize, arg._min) //we only assume `this` has max bombs
 		);
 
-		int intersect_max_given_min_bombs = minint(minint(_min, arg._min), common);
+		int intersect_max_given_min_bombs = minint(minint(_min, arg._max), common); //we only assume `this` has min bombs
 
 		ret._max = minint(_max - intersect_min_given_max_bombs, ret.size()); 
 		ret._min = _min - intersect_max_given_min_bombs;
+
+		if(!ret.is_reasonable()) {
+			debug_printf("{");
+			for(unsigned int i = 0; i < size(); ++i)
+				debug_printf("(%d,%d)",(*this)[i].row,(*this)[i].col);
+			debug_printf("}\\{");
+			for(unsigned int i = 0; i < arg.size(); ++i)
+				debug_printf("(%d,%d)",(arg)[i].row,(arg)[i].col);
+			debug_printf("} -> {");
+			for(unsigned int i = 0; i < ret.size(); ++i)
+				debug_printf("(%d,%d)",(ret)[i].row,(ret)[i].col);
+			debug_printf("}\n");
+			debug_printf("{%d : %d - %d}\\{%d : %d - %d} -> {%d : %d - %d}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
+		}
+		assert(ret.is_reasonable() && "subtract");
+		assert(ret.is_trim() && "subtract");
 
 		return ret;
 	}
@@ -212,27 +276,26 @@ namespace ms {
 	 **/
 	region region::merge(const region& arg) const {
 		region ret;
-		if (_cells == arg._cells) {
+		if (samearea(arg)) {
 			ret._cells = _cells;
 			ret._max = minint(_max, arg._max);
 			ret._min = maxint(_min, arg._min);
 		}
+		assert(ret.is_reasonable());
 		return ret;
 	}
 
 	/**
 	 *
-	 * removes a cell at the specified location treating it as a bomb
-	 * decreases min and max by 1, removes fromc _cells, and returns 0
-	 * if bomb is not contained in the region, or min == 0, do nothing and return 1
+	 * removes a cell at the specified location treating it as a bomb:
+	 * decreases min and max by 1, removes from the region, and returns 0
+	 * if bomb is not contained in the region, do nothing and return 1
 	 * if bomb is located in the region, but the region has no bombs (max of 0) return 2, but still remove
 	 * 
 	 * Complexity \f$O(N)\f$
 	 * 
 	 **/
 	int region::remove_bomb(rc_coord bomb) {
-		if (_min == 0)
-			return 1;
 		for (unsigned int i = 0; i < size(); ++i) {
 			if (_cells[i] == bomb) {
 				_cells.erase(_cells.begin() + i);
@@ -241,7 +304,7 @@ namespace ms {
 					--_min;
 				if(_max != 0)
 					--_max;
-				else 
+				else
 					return 2;
 
 				return 0;
@@ -295,8 +358,8 @@ namespace ms {
 				if(_cells[i] == comp[j]) {
 					hasj = 1;
 					checkcomp[j] = 1;
+					break;
 				}
-				break;
 			}
 			if(!hasj)
 				return 0;

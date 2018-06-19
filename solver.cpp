@@ -13,25 +13,28 @@ namespace ms {
 	}
 
 #ifdef DEBUG
-	int solver::assert_each_trim() {
-		for(literator ri = regions.begin(); ri != regions.end(); ++ri) {
-			(*ri).assert_trim();
-		}
-		return 0;
-	}
-	int solver::assert_norepeat() {
-		for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
-			for(literator rj = it_add(ri, 1); rj != regions.end(); ++rj) {
-				assert((*ri) != *rj);
-			}
-		}
-		return 0;
-	}
+	#define assert_each_trim() do {\
+		for(literator ri = regions.begin(); ri != regions.end(); ++ri) {\
+			assert_trim(*ri);\
+		}\
+	}while(0)
+	#define assert_norepeat() do {\
+		for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {\
+			for(literator rj = it_add(ri, 1); rj != regions.end(); ++rj) {\
+				assert((*ri) != *rj);\
+			}\
+		}\
+	}while(0)
 #else
-	int solver::assert_each_trim(){ return 0; }
-	int solver::assert_norepeat(){ return 0; }
+	#define assert_each_trim()
+	#define assert_norepeat()
 #endif
 
+#if DEBUG>1
+	#define debug_printf(...) printf(__VA_ARGS__)
+#else
+	#define debug_printf(...)
+#endif
 
 	/**
 	 *
@@ -73,28 +76,32 @@ namespace ms {
 	int solver::find_base_regions() {
 		for (unsigned int r = 0; r < g.height(); ++r) {
 			for (unsigned int c = 0; c < g.width(); ++c) {
-				region reg;
-				int num_flags = 0;
-				for (int rr = -1; rr <= 1; ++rr)
-					for (int cc = -1; cc <= 1; ++cc)
-						if (!(rr == 0 && cc == 0) && g.iscontained(r + rr, c + cc) &&
-							g.get(r + rr, c + cc) <= 8 && g.get(r + rr, c + cc) > 0) {
-							switch (g.get(r + rr, c + cc)) {
-							case grid::ms_hidden:
-							case grid::ms_question:
-								reg.addcell(rc_coord(r + rr, c + cc));
-								break;
-							case grid::ms_flag:
-								++num_flags;
-								break;
-							default:
-								break;
-							}
+				grid::cell gotten = g.get(r,c);
+				if(gotten <= 8 && gotten >= 0) {//we could exclude zero to save time, grid should deal with those automatically
+					region reg;
+					int num_flags = 0;
 
-						}
-				reg.set_count(g.get(r, c) - num_flags);
-				if(!reg.empty())
-					add_region(reg);
+					for (int rr = -1; rr <= 1; ++rr)
+						for (int cc = -1; cc <= 1; ++cc)
+							if (!(rr == 0 && cc == 0) && g.iscontained(r + rr, c + cc)) {
+								switch (g.get(r + rr, c + cc)) {
+								case grid::ms_hidden:
+								case grid::ms_question:
+									reg.addcell(rc_coord(r + rr, c + cc));
+									break;
+								case grid::ms_flag:
+									++num_flags;
+									break;
+								default:
+									break;
+								}
+
+							}
+					if(!reg.empty()) {
+						reg.set_count(gotten - num_flags);
+						add_region(reg);
+					}
+				}
 			}
 		}
 
@@ -116,11 +123,15 @@ namespace ms {
 	 * 
 	 **/
 	int solver::find_aux_regions() {
+		debug_printf("find_aux_regions...");
 		trim_regions();
 		int size = regions.size();
 
+
 		for (int startsize = 0, endsize = size; startsize != endsize; endsize = regions.size()) { //loops as long as nothing was added
 			startsize = endsize;
+
+			std::list<region> region_queue;
 
 			if(!regions.empty())//otherwise the conditional will never be false
 			for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
@@ -130,24 +141,32 @@ namespace ms {
 						//region _union = ri.unite(rj);
 						region _subij = (*ri).subtract(*rj);
 						region _subji = (*rj).subtract(*ri);
-						add_region(_inter);
+						//add_region(_inter);
 						//add_region(_union);
-						add_region(_subij);
-						add_region(_subji);
+						//add_region(_subij);
+						//add_region(_subji);
+						region_queue.push_back(_inter);
+						region_queue.push_back(_subij);
+						region_queue.push_back(_subji);
 					}
 				}
+			}
+
+			for(region& to_add : region_queue) {
+				add_region(to_add);
 			}
 
 		}
 		assert_each_trim();
 		assert_norepeat();
 
+		debug_printf("done\n");
 		return regions.size() - size;
 	}
 
 	/**
 	 *
-	 * Removes all empty regions.
+	 * Removes all empty regions and regions that give no information about min max beyong their size (min = 0, max = size).
 	 * Merges regions that have the same number of cells.
 	 * 
 	 * Returns the number of regions removed (2 being merged counts as 1 being removed)
@@ -156,12 +175,13 @@ namespace ms {
 	 *
 	 **/
 	int solver::trim_regions() {
+		debug_printf("trimming_regions...");
 		region zero;
 
 		size_t initial_size = regions.size();
 
 		for (literator ri = regions.begin(); ri != regions.end();) {
-			if ((*ri).size() != 0) {
+			if (!((*ri).size() == (*ri).max() && (*ri).min() == 0)) { //this evaluates false for all valid regions where size == 0
 				(*ri).trim(); //can never make a size 0 from nonzero
 				++ri;
 			}
@@ -170,11 +190,11 @@ namespace ms {
 			}
 		}
 		if(!regions.empty())//otherwise the conditional will never be false
-		for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
-			for(literator rj = it_add(rj, 1); rj != regions.end();) {
+		for(literator ri = regions.begin(); it_add(ri, 1) != regions.end() && ri != regions.end(); ++ri) {
+			for(literator rj = it_add(ri, 1); rj != regions.end();) {
 				if ((*ri).samearea(*rj)) {
 					*ri = (*ri).merge(*rj);
-					regions.erase(rj);
+					rj = regions.erase(rj);
 				}
 				else {
 					++rj;
@@ -182,6 +202,7 @@ namespace ms {
 			}
 		}
 
+		debug_printf("done\n");
 		return initial_size - regions.size();
 	}
 
@@ -200,7 +221,7 @@ namespace ms {
 		for (literator ri = regions.begin(); ri != regions.end(); ++ri) {
 			if (arg.samearea(*ri)) {
 				*ri = (*ri).merge(arg);
-				(*ri).assert_nonempty();
+				assert_nonempty(*ri);
 				return 0;
 			}
 		}
@@ -323,13 +344,42 @@ namespace ms {
 				} else {
 					++ri;
 				}
+				break;
 
 			case 2://we thought we knew this was wrong
+				debug_printf("(%d,%d){\n",cell.row,cell.col);
+				for(literator rj = regions.begin(); rj != regions.end(); ++rj) {
+					if(ri == rj) {
+						debug_printf("**{");
+					} else {
+						debug_printf("  {");
+					}
+					for(rc_coord& rc : *rj) {
+						debug_printf("(%d,%d)",rc.row,rc.col);
+					}
+					debug_printf("[%d<%d]",rj->min(),rj->max());
+					if(ri == rj) {
+						debug_printf("}**\n");
+					} else {
+						debug_printf("}  \n");
+					}
+				}
+				debug_printf("}\n");
 				throw std::logic_error("Attempted to remove a safe space from a region that has no safe space");
-			default://impossible
+			default:
 				throw std::logic_error("Impossible return value from remove_safe");
 			}
 		}
+
+		for(std::list<rc_coord>::iterator ri = safe_queue.begin(); ri != safe_queue.end();) {
+			if(*ri == cell) {
+				debug_printf("WARNING: removing repeated cell (%d,%d) from safe queue.\n", (*ri).row, (*ri).col);
+				ri = safe_queue.erase(ri);
+			} else {
+				++ri;
+			}
+		}
+		
 		return found;
 	}
 
@@ -351,19 +401,49 @@ namespace ms {
 			switch((*ri).remove_bomb(cell)) {
 			case 0://success
 				found = 1;
+				//fallthrough
 			case 1://not in region
 				if((*ri).empty()) {
 					ri = regions.erase(ri);
 				} else {
 					++ri;
 				}
+				break;
 
 			case 2://we thought we knew this was wrong
+				debug_printf("(%d,%d){\n",cell.row,cell.col);
+				for(literator rj = regions.begin(); rj != regions.end(); ++rj) {
+					if(ri == rj) {
+						debug_printf("**{");
+					} else {
+						debug_printf("  {");
+					}
+					for(rc_coord& rc : *rj) {
+						debug_printf("(%d,%d)",rc.row,rc.col);
+					}
+					debug_printf("[%d<%d]",rj->min(),rj->max());
+					if(ri == rj) {
+						debug_printf("}**\n");
+					} else {
+						debug_printf("}  \n");
+					}
+				}
+				debug_printf("}\n");
 				throw std::logic_error("Attempted to remove a bomb space from a region that has no bomb space");
-			default://impossible
+			default:
 				throw std::logic_error("Impossible return value from remove_bomb");
 			}
 		}
+
+		for(std::list<rc_coord>::iterator ri = bomb_queue.begin(); ri != bomb_queue.end();) {
+			if(*ri == cell) {
+				debug_printf("WARNING: removing repeated cell (%d,%d) from bomb queue.\n", (*ri).row, (*ri).col);
+				ri = bomb_queue.erase(ri);
+			} else {
+				++ri;
+			}
+		}
+
 		return found;
 	}
 
@@ -375,12 +455,36 @@ namespace ms {
 	 * 
 	 * Forces solver to flag a cell, and treat it as a bomb for all future calculations. 
 	 * This may result in errors and exceptions further on if it is incorrect.
+	 * 
+	 * Returns zero if the cell is successfully flagged, nonzero otherwise.
 	 *  
 	 **/
 	int solver::manual_flag(rc_coord arg) {
-		g.flag(arg.row, arg.col);
+		return apply_flag(arg);
+	}
 
-		if(g.get(arg.row, arg.col)) {
+	/**
+	 * 
+	 * Forces solver to open a cell.
+	 * 
+	 * Returns the number of cells opened, or -1 on error
+	 * 
+	 **/
+	int solver::manual_open(rc_coord arg) {
+		return apply_open(arg);
+	}
+
+	/**
+	 * 
+	 * Flags a cell, and treat it as a bomb for all future calculations.
+	 * 
+	 * Returns zero if the cell is successfully flagged
+	 *  
+	 **/
+	int solver::apply_flag(rc_coord arg) {
+		g.set_flag(arg.row, arg.col, grid::ms_flag);
+
+		if(g.get(arg.row, arg.col) == grid::ms_flag) {
 			remove_bomb_from_all_regions(arg);
 			return 0;
 		} else {
@@ -390,10 +494,12 @@ namespace ms {
 
 	/**
 	 * 
-	 * Forces solver to open a cell.
+	 * Opens a cell and removes all instances of the cell from all regions
+	 * 
+	 * Returns the number of cells opened, or -1 on error
 	 * 
 	 **/
-	int solver::manual_open(rc_coord arg) {
+	int solver::apply_open(rc_coord arg) {
 		switch(g.open(arg.row, arg.col)) {
 		case -1:
 			throw std::invalid_argument("Could not open the cell");
@@ -471,7 +577,12 @@ namespace ms {
 
 
 
-
+	int solver::solve_certain() {
+		int ret = 0;
+		while(step_certain() != rc_coord{0xffff,0xffff})
+			++ret;
+		return ret;
+	}
 
 
 	rc_coord solver::step_certain() {
@@ -486,13 +597,19 @@ namespace ms {
 
 		if(!bomb_queue.empty()) {
 			rc_coord ret = bomb_queue.front();
-			g.flag(ret.row, ret.col);
-			bomb_queue.pop_front();
+			assert(apply_flag(ret) == 0);//removes ret
 			return ret;
 		} else if(!safe_queue.empty()) {
 			rc_coord ret = safe_queue.front();
-			g.open(ret.row, ret.col);
-			safe_queue.pop_front();
+			if(g.get(ret.row,ret.col)!=grid::ms_hidden) {
+				debug_printf("cell:%d\nrow:%d\ncol:%d\n",g.get(ret.row,ret.col),ret.row,ret.col);
+				throw std::logic_error("Attempting to open a non-hidden cell");
+			}
+			int open_status = apply_open(ret);//removes ret
+			if(!(open_status > 0)) {
+				debug_printf("cells opened: %d\nrow:%d\ncol:%d\n",open_status,ret.row,ret.col);
+				throw std::logic_error("Opened the wrong number of cells");
+			}
 			return ret;
 		} else {
 			return rc_coord{ 0xffff,0xffff };
@@ -502,20 +619,3 @@ namespace ms {
 
 }
 
-
-/*
-Basic strategy
-
-Create regions around each number, if they overlap figure out what that means
-   [A ] [A ] [AB] [AB] [B ] with A:1 and B:2
-=> [# ] [# ] [C ] [C ] [* ] with C:1
-
-remove obsolete regions:
-	cells.size == 0
-	duplicate
-
-
-
-
-
-*/
