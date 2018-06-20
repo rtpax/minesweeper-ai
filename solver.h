@@ -71,6 +71,7 @@ namespace ms {
 		int find_regions();
 		int find_base_regions();
 		int find_aux_regions();
+		int find_ext_aux_regions();
 		int find_chains();
 		int find_leftover();
 

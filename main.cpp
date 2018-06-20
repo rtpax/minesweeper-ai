@@ -87,9 +87,8 @@ int notmain() {
 }
 
 int main() {
-    ms::solver ai(9,13,32);
+    ms::solver ai(16,30,99);
 
-    ai.manual_open(ms::rc_coord{5,5});
     printms(ai.view_grid());
 
     std::string line;
@@ -97,7 +96,7 @@ int main() {
     std::string col;
     
 
-    while(ai.view_grid().gamestate() == ms::grid::RUNNING) {
+    while(ai.view_grid().gamestate() == ms::grid::RUNNING || ai.view_grid().gamestate() == ms::grid::NEW) {
         std::cout << "enter input of the form 'row, column':\n";
 
         std::getline(std::cin, line);
@@ -118,7 +117,6 @@ int main() {
                 c = std::stoi(col);
                 std::cout << "manual openening cell (" << r << "," << c << ")\n";
             } catch (std::invalid_argument e) { //let the ai decide
-                std::cout << "invalid entry: " << e.what() << "\n";
                 parse_fail = true;
             }
 

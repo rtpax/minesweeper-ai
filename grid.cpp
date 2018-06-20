@@ -93,8 +93,9 @@ namespace ms {
 		_grid = new char*[_height];
 		_visgrid = new char*[_height];
 		for (unsigned int h = 0; h < _height; ++h) {
-			_grid[h] = new char[_width];
+			_grid[h] = new char[_width]();
 			_visgrid[h] = new char[_width];
+			std::fill_n(_visgrid[h],_width,ms_hidden);
 		}
 
 		return 0;
@@ -226,7 +227,7 @@ namespace ms {
 		else if (_visgrid[row][col] == ms_hidden || _visgrid[row][col] == ms_question) {
 			_visgrid[row][col] = _grid[row][col];
 			if (_visgrid[row][col] == 0) {
-				return open__(row, col);
+				return 1 + open__(row, col);
 			}
 			return 1;
 		}

@@ -1,5 +1,6 @@
 ﻿#include "region.h"
 #include <stdio.h>
+#include <inttypes.h>
 
 namespace ms {
 	int maxint(int a, int b) { return a > b ? a : b; }
@@ -114,15 +115,15 @@ namespace ms {
 		if(!ret.is_reasonable()) {
 			debug_printf("{");
 			for(unsigned int i = 0; i < size(); ++i)
-				debug_printf("(%d,%d)",(*this)[i].row,(*this)[i].col);
+				debug_printf("(%u,%u)",(*this)[i].row,(*this)[i].col);
 			debug_printf("}\\{");
 			for(unsigned int i = 0; i < arg.size(); ++i)
-				debug_printf("(%d,%d)",(arg)[i].row,(arg)[i].col);
+				debug_printf("(%u,%u)",(arg)[i].row,(arg)[i].col);
 			debug_printf("} -> {");
 			for(unsigned int i = 0; i < ret.size(); ++i)
-				debug_printf("(%d,%d)",(ret)[i].row,(ret)[i].col);
+				debug_printf("(%u,%u)",(ret)[i].row,(ret)[i].col);
 			debug_printf("}\n");
-			debug_printf("{%d : %d - %d}\\{%d : %d - %d} -> {%d : %d - %d}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
+			debug_printf("{%zu : %u - %u}\\{%zu : %u - %u} -> {%zu : %u - %u}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
 		}
 		assert(ret.is_reasonable() && "intersect");
 		assert(ret.is_trim() && "intersect");
@@ -189,15 +190,15 @@ namespace ms {
 		if(!ret.is_reasonable()) {
 			debug_printf("{");
 			for(unsigned int i = 0; i < size(); ++i)
-				debug_printf("(%d,%d)",(*this)[i].row,(*this)[i].col);
+				debug_printf("(%u,%u)",(*this)[i].row,(*this)[i].col);
 			debug_printf("}\\{");
 			for(unsigned int i = 0; i < arg.size(); ++i)
-				debug_printf("(%d,%d)",(arg)[i].row,(arg)[i].col);
+				debug_printf("(%u,%u)",(arg)[i].row,(arg)[i].col);
 			debug_printf("} -> {");
 			for(unsigned int i = 0; i < ret.size(); ++i)
-				debug_printf("(%d,%d)",(ret)[i].row,(ret)[i].col);
+				debug_printf("(%u,%u)",(ret)[i].row,(ret)[i].col);
 			debug_printf("}\n");
-			debug_printf("{%d : %d - %d}\\{%d : %d - %d} -> {%d : %d - %d}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
+			debug_printf("{%zu : %u - %u}\\{%zu : %u - %u} -> {%zu : %u - %u}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
 		}
 		assert(ret.is_reasonable() && "unite");
 		assert(ret.is_trim() && "unite");
@@ -248,15 +249,15 @@ namespace ms {
 		if(!ret.is_reasonable()) {
 			debug_printf("{");
 			for(unsigned int i = 0; i < size(); ++i)
-				debug_printf("(%d,%d)",(*this)[i].row,(*this)[i].col);
+				debug_printf("(%u,%u)",(*this)[i].row,(*this)[i].col);
 			debug_printf("}\\{");
 			for(unsigned int i = 0; i < arg.size(); ++i)
-				debug_printf("(%d,%d)",(arg)[i].row,(arg)[i].col);
+				debug_printf("(%u,%u)",(arg)[i].row,(arg)[i].col);
 			debug_printf("} -> {");
 			for(unsigned int i = 0; i < ret.size(); ++i)
-				debug_printf("(%d,%d)",(ret)[i].row,(ret)[i].col);
+				debug_printf("(%u,%u)",(ret)[i].row,(ret)[i].col);
 			debug_printf("}\n");
-			debug_printf("{%d : %d - %d}\\{%d : %d - %d} -> {%d : %d - %d}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
+			debug_printf("{%zu : %u - %u}\\{%zu : %u - %u} -> {%zu : %u - %u}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
 		}
 		assert(ret.is_reasonable() && "subtract");
 		assert(ret.is_trim() && "subtract");

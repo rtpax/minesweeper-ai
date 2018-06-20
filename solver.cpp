@@ -3,6 +3,7 @@
 
 namespace ms {
 
+
 	typedef std::list<region>::iterator literator;
 	literator it_add(literator base, int amount) {
 		for(int i = 0; i < amount; ++i)
@@ -53,6 +54,25 @@ namespace ms {
 	solver::solver(unsigned int height, unsigned int width, unsigned int bombs) : g(height,width,bombs) {
 		
 	}
+
+	bool region_is_helpful(const region& check) {
+		return !(check.size() == check.max() && check.min() == 0);//size == 0 evaluates to false for valid regions
+	}
+
+	void debug_print_rc_coord(rc_coord& arg) {
+		debug_printf("(%u,%u)",arg.row,arg.col);
+	}
+	
+	void debug_print_region(region& arg) {
+		debug_printf("{[%zu:%u,%u]",arg.size(),arg.min(),arg.max());
+		for(rc_coord rc : arg) {
+			debug_print_rc_coord(rc);
+		}
+		debug_printf("}");
+	}
+
+
+
 
 
 	/**
@@ -128,23 +148,17 @@ namespace ms {
 		int size = regions.size();
 
 
-		for (int startsize = 0, endsize = size; startsize != endsize; endsize = regions.size()) { //loops as long as nothing was added
-			startsize = endsize;
-
+		for (bool made_change = 1; made_change;) { //loops as long as nothing was added
+			made_change = 0;
 			std::list<region> region_queue;
 
 			if(!regions.empty())//otherwise the conditional will never be false
 			for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
 				for(literator rj = it_add(ri, 1); rj != regions.end(); ++rj) {
-					region _inter = (*rj).intersect(*rj);
+					region _inter = (*rj).intersect(*ri);
 					if (_inter.size() > 0) {
-						//region _union = ri.unite(rj);
 						region _subij = (*ri).subtract(*rj);
 						region _subji = (*rj).subtract(*ri);
-						//add_region(_inter);
-						//add_region(_union);
-						//add_region(_subij);
-						//add_region(_subji);
 						region_queue.push_back(_inter);
 						region_queue.push_back(_subij);
 						region_queue.push_back(_subji);
@@ -153,7 +167,9 @@ namespace ms {
 			}
 
 			for(region& to_add : region_queue) {
-				add_region(to_add);
+				if(add_region(to_add)) {
+					made_change = 1;
+				}
 			}
 
 		}
@@ -175,13 +191,15 @@ namespace ms {
 	 *
 	 **/
 	int solver::trim_regions() {
-		debug_printf("trimming_regions...");
 		region zero;
 
 		size_t initial_size = regions.size();
 
 		for (literator ri = regions.begin(); ri != regions.end();) {
-			if (!((*ri).size() == (*ri).max() && (*ri).min() == 0)) { //this evaluates false for all valid regions where size == 0
+			if (region_is_helpful(*ri)) {
+				if(!(*ri).is_trim()) {
+
+				}
 				(*ri).trim(); //can never make a size 0 from nonzero
 				++ri;
 			}
@@ -202,7 +220,6 @@ namespace ms {
 			}
 		}
 
-		debug_printf("done\n");
 		return initial_size - regions.size();
 	}
 
@@ -302,6 +319,33 @@ namespace ms {
 	 *
 	 **/
 	int solver::find_conglomerate(){
+		debug_printf("finding_conglomerate...");
+
+		std::list<region> conglomerates;
+
+		for (bool made_change = 0; made_change;) { //loops as long as nothing was added
+			made_change = 0;
+			std::list<region> region_queue;
+
+			if(!regions.empty())//otherwise the conditional will never be false
+			for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
+				for(literator rj = it_add(ri, 1); rj != regions.end(); ++rj) {
+					region _union = (*rj).unite(*ri);
+					region_queue.push_back(_union);
+				}
+			}
+
+			for(region& to_add : region_queue) {
+				if(add_region(to_add)) {
+					made_change = 1;
+				}
+			}
+
+		}
+		assert_each_trim();
+		assert_norepeat();
+
+		debug_printf("done\n");
 
 		return 0;
 	}
@@ -313,8 +357,8 @@ namespace ms {
 		if(!(safe_queue.empty() && bomb_queue.empty()))
 			return 0;
 
-		find_chains();
-		find_leftover();
+		//find_chains();
+		//find_leftover();
 		
 		return 1;
 	}
@@ -347,29 +391,24 @@ namespace ms {
 				break;
 
 			case 2://we thought we knew this was wrong
-				debug_printf("(%d,%d){\n",cell.row,cell.col);
+				debug_printf("(%u,%u){\n",cell.row,cell.col);
 				for(literator rj = regions.begin(); rj != regions.end(); ++rj) {
+					if(ri == rj) 
+						debug_printf("**");
+					debug_print_region(*rj);
 					if(ri == rj) {
-						debug_printf("**{");
+						debug_printf("**\n");
 					} else {
-						debug_printf("  {");
+						debug_printf("  \n");
 					}
-					for(rc_coord& rc : *rj) {
-						debug_printf("(%d,%d)",rc.row,rc.col);
 					}
-					debug_printf("[%d<%d]",rj->min(),rj->max());
-					if(ri == rj) {
-						debug_printf("}**\n");
-					} else {
-						debug_printf("}  \n");
-					}
-				}
 				debug_printf("}\n");
 				throw std::logic_error("Attempted to remove a safe space from a region that has no safe space");
 			default:
 				throw std::logic_error("Impossible return value from remove_safe");
 			}
 		}
+
 
 		for(std::list<rc_coord>::iterator ri = safe_queue.begin(); ri != safe_queue.end();) {
 			if(*ri == cell) {
@@ -411,23 +450,17 @@ namespace ms {
 				break;
 
 			case 2://we thought we knew this was wrong
-				debug_printf("(%d,%d){\n",cell.row,cell.col);
+				debug_printf("(%u,%u){\n",cell.row,cell.col);
 				for(literator rj = regions.begin(); rj != regions.end(); ++rj) {
+					if(ri == rj) 
+						debug_printf("**");
+					debug_print_region(*rj);
 					if(ri == rj) {
-						debug_printf("**{");
+						debug_printf("**\n");
 					} else {
-						debug_printf("  {");
+						debug_printf("  \n");
 					}
-					for(rc_coord& rc : *rj) {
-						debug_printf("(%d,%d)",rc.row,rc.col);
 					}
-					debug_printf("[%d<%d]",rj->min(),rj->max());
-					if(ri == rj) {
-						debug_printf("}**\n");
-					} else {
-						debug_printf("}  \n");
-					}
-				}
 				debug_printf("}\n");
 				throw std::logic_error("Attempted to remove a bomb space from a region that has no bomb space");
 			default:
@@ -602,12 +635,13 @@ namespace ms {
 		} else if(!safe_queue.empty()) {
 			rc_coord ret = safe_queue.front();
 			if(g.get(ret.row,ret.col)!=grid::ms_hidden) {
-				debug_printf("cell:%d\nrow:%d\ncol:%d\n",g.get(ret.row,ret.col),ret.row,ret.col);
+				//TODO find bug where this code was reached
+				debug_printf("cell:%d\nrow:%u\ncol:%u\n",g.get(ret.row,ret.col),ret.row,ret.col);
 				throw std::logic_error("Attempting to open a non-hidden cell");
 			}
 			int open_status = apply_open(ret);//removes ret
 			if(!(open_status > 0)) {
-				debug_printf("cells opened: %d\nrow:%d\ncol:%d\n",open_status,ret.row,ret.col);
+				debug_printf("cells opened: %hhu\nrow:%u\ncol:%u\n",open_status,ret.row,ret.col);
 				throw std::logic_error("Opened the wrong number of cells");
 			}
 			return ret;
