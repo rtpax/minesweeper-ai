@@ -1,10 +1,13 @@
+
+
 CC=gcc
 CXX=g++
 
-CPPFLAGS=-DDEBUG=2
-CFLAGS=-g -c -Wall
-CXXFLAGS=-g -c -Wall -O0 -fno-inline
-# CXXFLAFS=-g -c -Wall -02
+OPTIMIZATION=-O0 -fno-inline
+DEBUG_LEVEL=-DDEBUG=2
+
+CPPFLAGS=$(DEBUG_LEVEL)
+CXXFLAGS=-g -c -Wall $(OPTIMIZATION)
 LDFLAGS=-g
 LDLIBS=
 
@@ -22,30 +25,22 @@ spinoff_DEP=spinoff.h $(solver_DEP) $(spingrid_DEP) $(test_DEP)
 main_DEP=solver.h spinoff.h $(test_DEP)
 grid_DEP=grid.h $(test_DEP)
 
-
-TEST_CPPFLAGS=$(CPPFLAGS) -DTESTMODE
-TEST_SRC_PREFIX=/test/
-TEST_SRCS=grid_test.cpp test.cpp
-TEST_MODULES=$(SRCS:.cpp=)
-TEST_OBJS=$(SRCS:.cpp=.o)
-
-solver_test_DEP=solver_test.h $(solver_DEP)
-region_test_DEP=region_test.h $(region_DEP)
-spingrid_test_DEP=spingrid_test.h $(spingrid_DEP)
-spinoff_test_DEP=spinoff_test.h $(spinoff_DEP)
-grid_test_DEP=grid_test.h $(grid_DEP)
+MODULE_CPPFLAGS=CPPFLAGS
+MODULE_CXXFLAGS=CXXFLAGS
 
 OUT=sweep.exe
 
 all: $(OUT)
+
+fast: $(eval OPTIMIZATION=-O2) $(eval DEBUG_LEVEL=) $(OUT)
 
 nolink: $(OBJS)
 
 $(OUT):$(OBJS)
 	$(CXX) $(OBJS) -o $(OUT) $(LDFLAGS) $(LDLIBS)
 
-
 $(foreach module,$(MODULES),$(eval CUR_MODULE:=$(module)) $(eval include makemodule.mk))
+
 
 
 clean:
@@ -53,3 +48,9 @@ clean:
 
 distclean: clean
 	rm -f $(OUT)
+
+include maketest.mk
+
+
+
+

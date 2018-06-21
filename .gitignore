@@ -1,13 +1,9 @@
-/sweep.exe
+*.o
+*.exe
 
-/grid.o
-/region.o
-/solver.o
-/spingrid.o
-/spinoff.o
-/main.o
+/.log
 
 /.vscode
 /sandbox
 /dox
-a.exe
+

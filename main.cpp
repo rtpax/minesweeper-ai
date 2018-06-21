@@ -87,9 +87,7 @@ int notmain() {
 }
 
 int main() {
-    ms::solver ai(16,30,99);
-
-    printms(ai.view_grid());
+    ms::solver ai(9,13,20);
 
     std::string line;
     std::string row;
@@ -97,6 +95,8 @@ int main() {
     
 
     while(ai.view_grid().gamestate() == ms::grid::RUNNING || ai.view_grid().gamestate() == ms::grid::NEW) {
+        printms(ai.view_grid());
+
         std::cout << "enter input of the form 'row, column':\n";
 
         std::getline(std::cin, line);
@@ -128,20 +128,13 @@ int main() {
                 try {
                     ai.manual_open(ms::rc_coord{(unsigned int)r,(unsigned int)c});
                 } catch (std::exception e) {
-                    std::cout << "error: Could not open the cell -- " << e.what() << "\n";
-                    return 1;
+                    std::cout << "could not open cell (" << r << "," << c << ")\n";
                 }
             }
         }
-
-        
-
-
-
-
-        
-        printms(ai.view_grid());
     }
+
+    printms(ai.view_grid());
 
     return 0;
 }

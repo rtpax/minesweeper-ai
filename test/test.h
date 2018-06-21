@@ -1,7 +1,7 @@
 #ifndef MS_TEST_UNITTEST_H
 #define MS_TEST_UNITTEST_H
 
-/* test/unittest.h
+/* test/test.h
  *
  * defines macros to change program behavior for when running test
  * vs when running normally.
@@ -14,11 +14,23 @@
  * 
  */
 
+#include <string>
+
+struct test_output {
+    int expected_output;
+    int actual_output;
+    std::string desc;
+    bool pass;
+};
+
+
 #ifdef TESTMODE
 
 #define DECL_TEST(class_name) class class_name ## _test
 #define BEFRIEND_TEST(class_name) friend class_name ## _test
 #define IF_TEST(code_to_do) code_to_do
+
+
 
 #else
 

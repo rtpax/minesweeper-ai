@@ -1,9 +1,12 @@
 #include "grid.h"
 #include <vector>
+#include <time.h>
 
 
 namespace ms {
 
+	std::mt19937 grid::rng(time(NULL));
+	
 	/**
 	 * 
 	 * Returns true if the given location is contained in the grid. Returns false otherwise.
@@ -37,36 +40,32 @@ namespace ms {
 	/**
 	 * 
 	 * Initializes the state of the grid such that it has the correct number of bombs 
-	 * and the input location is an not a bomb. The input location is opened. If there
+	 * and the input location is not a bomb. The input location is opened. If there
 	 * are too few spaces to place bombs, init will place as many as it can (it will
 	 * never place on the input location).
 	 * 
 	 **/
 	int grid::init(unsigned int row, unsigned int col) {
-		struct rc_coord { unsigned int row, col; };//similar definition as in region.h
+		struct rc_coord { unsigned int row, col; };//similar definition as in region.h, no other relation
 		
-		std::vector<rc_coord> nonbombs(_height*_width);
+		std::vector<rc_coord> nonbombs;
 
-		int index = 0;
 		for (unsigned int r = 0; r < _height; ++r) {
 			for (unsigned int c = 0; c < _width; ++c) {
 				_visgrid[r][c] = ms_hidden;
 				_grid[r][c] = 0;
 				if (!(r == row && c == col)) { //first click is always not a bomb
-					nonbombs[index].row = r;
-					nonbombs[index].col = c;
-					++index;
+					nonbombs.push_back(rc_coord{ r, c });
 				}
 			}
 		}
 
 		for (unsigned int b = 0; b < _bombs && !nonbombs.empty(); ++b) {
-			index = rng.mt() % nonbombs.size();
+			int index = rng() % nonbombs.size();
 			_grid[nonbombs[index].row][nonbombs[index].col] = ms_bomb;
 			nonbombs.erase(nonbombs.begin() + index);
 		}
 
-		//count all bombs adjacent to each nonbomb square
 		for (unsigned int r = 0; r < _height; ++r) {
 			for (unsigned int c = 0; c < _width; ++c) {
 				if (_grid[r][c] != ms_bomb)
@@ -101,6 +100,27 @@ namespace ms {
 		return 0;
 	}
 
+	grid::grid(unsigned int height, unsigned int width, cell ** arr) {
+		allocate__(height, width, 0);
+		_gs = RUNNING;
+
+		for(unsigned int r = 0; r < _height; ++r) {
+			for(unsigned int c = 0; c < _width; ++c) {
+				if(arr[r][c] == ms_bomb) {
+					_grid[r][c] = ms_bomb;
+					++_bombs;
+				}
+			}
+		}
+
+		for (unsigned int r = 0; r < _height; ++r) {
+			for (unsigned int c = 0; c < _width; ++c) {
+				if (_grid[r][c] != ms_bomb)
+					_grid[r][c] = count_neighbor(r, c, ms_bomb);
+			}
+		}
+	}
+
 	grid::grid(unsigned int height, unsigned int width, unsigned int bombs) {
 		allocate__(height,width,bombs);
 		_gs = NEW;
@@ -115,7 +135,7 @@ namespace ms {
 			for(unsigned int r = 0; r < _height; ++r) {
 				for(unsigned int c = 0; c < _width; ++c) {
 					_visgrid[r][c] = copy._visgrid[r][c];
-					_grid[r][c] = copy._visgrid[r][c];
+					_grid[r][c] = copy._grid[r][c];
 				}
 			}
 			_gs = copy._gs;

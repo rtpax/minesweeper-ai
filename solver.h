@@ -85,6 +85,7 @@ namespace ms {
 
 		std::list<region> congolomerates;
 		int find_conglomerate();
+		int add_conglomerate(const region& to_add);
 		int add_solo_regions();
 		std::vector<region> find_best_starting_points();
 		int work_from_starting_point(region& conglomerate, const region& start);

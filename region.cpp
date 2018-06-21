@@ -1,11 +1,8 @@
 ﻿#include "region.h"
 #include <stdio.h>
-#include <inttypes.h>
+#include <algorithm>
 
 namespace ms {
-	int maxint(int a, int b) { return a > b ? a : b; }
-	int minint(int a, int b) { return a < b ? a : b; }
-	int nonneg(int a) { return a > 0 ? a : 0; }
 
 #if DEBUG>1
 	#define debug_printf(...) printf(__VA_ARGS__)
@@ -106,10 +103,10 @@ namespace ms {
 		int subsize = size() - ret.size();
 		int argsubsize = arg.size() - ret.size();
 
-		ret._max = minint(minint(_max, arg._max), ret.size());
-		ret._min = maxint(
-			nonneg(_min - minint(subsize, _min)), 
-			nonneg(arg._min) - minint(argsubsize, arg._min)
+		ret._max = std::min<int>(std::min<int>(_max, arg._max), ret.size());
+		ret._min = std::max<int>(
+			_min - std::min<int>(subsize, _min), 
+			arg._min - std::min<int>(argsubsize, arg._min)
 		);
 
 		if(!ret.is_reasonable()) {
@@ -183,9 +180,9 @@ namespace ms {
 				++common;
 		}
 
-		ret._max = minint(arg._max + _max - nonneg(_max - (size() - common)),
-			arg._max + _max - nonneg(arg._max - (arg.size() - common)));
-		ret._min = arg._min + _min - minint(minint(arg._min, _min), common);
+		ret._max = std::min<int>(arg._max + _max - std::max<int>(_max - (size() - common), 0),
+			arg._max + _max - std::max<int>(arg._max - (arg.size() - common), 0));
+		ret._min = arg._min + _min - std::min<int>(std::min<int>(arg._min, _min), common);
 
 		if(!ret.is_reasonable()) {
 			debug_printf("{");
@@ -236,14 +233,14 @@ namespace ms {
 		int common = size() - ret.size();
 		int othersubsize = arg.size() - common;
 
-		int intersect_min_given_max_bombs =  maxint(
-			_max - minint(ret.size(), _max), 
-			arg._min - minint(othersubsize, arg._min) //we only assume `this` has max bombs
+		int intersect_min_given_max_bombs =  std::max(
+			_max - std::min<int>(ret.size(), _max), 
+			arg._min - std::min<int>(othersubsize, arg._min) //we only assume `this` has max bombs
 		);
 
-		int intersect_max_given_min_bombs = minint(minint(_min, arg._max), common); //we only assume `this` has min bombs
+		int intersect_max_given_min_bombs = std::min<int>(std::min<int>(_min, arg._max), common); //we only assume `this` has min bombs
 
-		ret._max = minint(_max - intersect_min_given_max_bombs, ret.size()); 
+		ret._max = std::min<int>(_max - intersect_min_given_max_bombs, ret.size()); 
 		ret._min = _min - intersect_max_given_min_bombs;
 
 		if(!ret.is_reasonable()) {
@@ -279,8 +276,8 @@ namespace ms {
 		region ret;
 		if (samearea(arg)) {
 			ret._cells = _cells;
-			ret._max = minint(_max, arg._max);
-			ret._min = maxint(_min, arg._min);
+			ret._max = std::min(_max, arg._max);
+			ret._min = std::max(_min, arg._min);
 		}
 		assert(ret.is_reasonable());
 		return ret;
@@ -382,8 +379,15 @@ namespace ms {
 		return 1;
 	}
 
-
-
+	/**
+	 * 
+	 * Returns true if the intersection of two regions is nonzero in size. Not much 
+	 * faster than region::intersect, so if you actually intend to use the intersection
+	 * it is probably better to take it directly.
+	 * 
+	 * Complexit \f$O(N^2)\f$
+	 * 
+	 **/
 	bool region::has_intersect(const region& arg) const {
 		for (unsigned int i = 0; i < size(); ++i) {
 			for (unsigned int j = 0; j < arg.size(); ++j) {

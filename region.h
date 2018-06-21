@@ -75,7 +75,7 @@ namespace ms {
 		bool operator!=(const region& comp) const { return !(*this == comp); }
 
 		bool samearea(const region& comp) const;
-		bool has_intersect(const region& chuck) const;
+		bool has_intersect(const region& arg) const;
 		int addcell(rc_coord rc);
 		/**Adds a cell to a region. Does not check for duplicates. The resulting region is not guaranteed to be trim.\n Complexity \f$O(1)\f$**/
 		int forcecell(rc_coord rc) { _cells.push_back(rc); return 1; }

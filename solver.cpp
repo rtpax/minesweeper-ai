@@ -1,17 +1,129 @@
 #include "solver.h"
 #include <stdexcept>
 
+#if DEBUG>1
+	#define debug_printf(...) printf(__VA_ARGS__)
+#else
+	#define debug_printf(...)
+#endif
+
 namespace ms {
 
 
-	typedef std::list<region>::iterator literator;
-	literator it_add(literator base, int amount) {
-		for(int i = 0; i < amount; ++i)
-			++base;
-		for(int i = 0; i > amount; --i)
-			--base;
-		return base;
+	/**\internal
+	 * 
+	 * Namespace for organizing globals used by class implementations.
+	 * 
+	 **/
+	namespace util {
+
+		/****/
+		typedef std::list<region>::iterator literator;
+
+		/**Allows adding to r-value iterators that do not support random access**/
+		literator it_add(literator base, int amount) {
+			for(int i = 0; i < amount; ++i)
+				++base;
+			for(int i = 0; i > amount; --i)
+				--base;
+			return base;
+		}
+
+		/**
+		 * 
+		 * Checks if the cell gives any useful information about the number of bombs.
+		 * 
+		 * Returns false if min/max can be inferred from size, true if they cannot
+		 * 
+		 **/
+		bool region_is_helpful(const region& check) {
+			return !(check.size() == check.max() && check.min() == 0);//size == 0 evaluates to false for valid regions
+		}
+
+		/**Print information about rc_coord iff debug printing is enabled**/
+		void debug_print_rc_coord(rc_coord& arg) {
+			debug_printf("(%u,%u)",arg.row,arg.col);
+		}
+		
+		/**Print information about region iff debug printing is enabled**/
+		void debug_print_region(region& arg) {
+			debug_printf("{[%zu:%u,%u]",arg.size(),arg.min(),arg.max());
+			for(rc_coord rc : arg) {
+				debug_print_rc_coord(rc);
+			}
+			debug_printf("}");
+		}
+
+		/**Indicates a function is a pair suitable for a chain**/
+		bool ispair(const region& check) {
+			return check.size() == 2 && check.min() == 1 && check.max() == 1;
+		}
+
+		/**Returns true if check overlaps any of the regions in chain**/
+		bool hasoverlap(const std::vector<region>& chain, const region& check) {
+			for(const region& reg : chain) {
+				if(check.has_intersect(reg))
+					return true;
+			}
+			return false;
+		}
+
+		/**
+		 * 
+		 * Returns a vector containing all regions in a chain that starts at arg.front()
+		 * 
+		 * All regions in arg that are put into chains are removed from arg
+		 * 
+		 * \note This causes a lasting change in the input
+		 * 
+		 **/
+		std::vector<region> one_chain(std::list<region>& arg) {
+			bool found = true;
+			std::vector<region> chain;
+
+			while(found) {
+				found = false;
+				for(literator iter = arg.begin(); iter != arg.end();) {
+					if(ispair(*iter) && (hasoverlap(chain,*iter) || chain.empty())) {
+						chain.push_back(*iter);
+						iter = arg.erase(iter);
+						found = 1;
+					} else {
+						++iter;
+					}
+				}
+			}
+
+			return chain;
+		}
+
+		/**
+		 *
+		 * Adds a region to the list of regions, merging if a region already exists covering the same area.
+		 * Skips regions that offer no information
+		 * 
+		 * Returns 0 if merging occurs, otherwise returns 1. 
+		 *
+		 * Complexity \f$O(N)\f$
+		 * 
+		 **/
+		int merge_region_into_list(std::list<region>& list, const region& to_add) {
+			if(!region_is_helpful(to_add))
+				return 0;
+			for (literator li = list.begin(); li != list.end(); ++li) {
+				if (to_add.samearea(*li)) {
+					*li = (*li).merge(to_add);
+					assert_nonempty(*li);
+					return 0;
+				}
+			}
+			list.push_back(to_add);
+			return 1;
+		}
+
+
 	}
+	using namespace util;
 
 #ifdef DEBUG
 	#define assert_each_trim() do {\
@@ -31,11 +143,6 @@ namespace ms {
 	#define assert_norepeat()
 #endif
 
-#if DEBUG>1
-	#define debug_printf(...) printf(__VA_ARGS__)
-#else
-	#define debug_printf(...)
-#endif
 
 	/**
 	 *
@@ -55,21 +162,6 @@ namespace ms {
 		
 	}
 
-	bool region_is_helpful(const region& check) {
-		return !(check.size() == check.max() && check.min() == 0);//size == 0 evaluates to false for valid regions
-	}
-
-	void debug_print_rc_coord(rc_coord& arg) {
-		debug_printf("(%u,%u)",arg.row,arg.col);
-	}
-	
-	void debug_print_region(region& arg) {
-		debug_printf("{[%zu:%u,%u]",arg.size(),arg.min(),arg.max());
-		for(rc_coord rc : arg) {
-			debug_print_rc_coord(rc);
-		}
-		debug_printf("}");
-	}
 
 
 
@@ -226,6 +318,7 @@ namespace ms {
 	/**
 	 *
 	 * Adds a region to the list of regions, merging if a region already exists covering the same area.
+	 * Skips regions that offer no information
 	 * 
 	 * Returns 0 if merging occurs, otherwise returns 1. 
 	 *
@@ -233,56 +326,23 @@ namespace ms {
 	 * 
 	 **/
 	int solver::add_region(const region& arg) {
-		if(arg.size() == 0)
-			return 0;
-		for (literator ri = regions.begin(); ri != regions.end(); ++ri) {
-			if (arg.samearea(*ri)) {
-				*ri = (*ri).merge(arg);
-				assert_nonempty(*ri);
-				return 0;
-			}
-		}
-		regions.push_back(arg);
-		return 1;
-	}
-
-	bool ispair(const region& check) {
-		return check.size() == 2 && check.min() == 1 && check.max() == 1;
-	}
-
-	bool hasoverlap(const std::vector<region>& chain, const region& check) {
-		for(const region& reg : chain) {
-			if(check.has_intersect(reg))
-				return true;
-		}
-		return false;
+		return merge_region_into_list(regions,arg);
 	}
 
 	/**
+	 *
+	 * Adds a region to the list of conglomerates, merging if a region already exists covering the same area.
+	 * Skips regions that offer no information
 	 * 
-	 * returns a vector containing all regions in a chain that starts at arg.front()
-	 * all regions in arg that are put into chains are removed from arg
+	 * Returns 0 if merging occurs, otherwise returns 1. 
+	 *
+	 * Complexity \f$O(N)\f$
 	 * 
 	 **/
-	std::vector<region> one_chain(std::list<region>& arg) {
-		bool found = true;
-		std::vector<region> chain;
-
-		while(found) {
-			found = false;
-			for(literator iter = arg.begin(); iter != arg.end();) {
-				if(ispair(*iter) && (hasoverlap(chain,*iter) || chain.empty())) {
-					chain.push_back(*iter);
-					iter = arg.erase(iter);
-					found = 1;
-				} else {
-					++iter;
-				}
-			}
-		}
-
-		return chain;
+	int solver::add_conglomerate(const region& arg) {
+		return merge_region_into_list(regions,arg);
 	}
+
 
 	/**
 	 *
@@ -323,7 +383,7 @@ namespace ms {
 
 		std::list<region> conglomerates;
 
-		for (bool made_change = 0; made_change;) { //loops as long as nothing was added
+		for (bool made_change = 0; made_change;) {
 			made_change = 0;
 			std::list<region> region_queue;
 
@@ -395,6 +455,8 @@ namespace ms {
 				for(literator rj = regions.begin(); rj != regions.end(); ++rj) {
 					if(ri == rj) 
 						debug_printf("**");
+					else
+						debug_printf("  ");
 					debug_print_region(*rj);
 					if(ri == rj) {
 						debug_printf("**\n");
@@ -454,6 +516,8 @@ namespace ms {
 				for(literator rj = regions.begin(); rj != regions.end(); ++rj) {
 					if(ri == rj) 
 						debug_printf("**");
+					else
+						debug_printf("  ");
 					debug_print_region(*rj);
 					if(ri == rj) {
 						debug_printf("**\n");

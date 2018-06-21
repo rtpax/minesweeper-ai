@@ -2,13 +2,13 @@
 #define MS_GRID_H
 
 #include <random>
-#include <time.h>
 
 
 namespace ms {
 
 
 	class spingrid;
+	class grid_test;
 
 	/**
 	 * 
@@ -89,13 +89,15 @@ namespace ms {
 		};
 
 
-	protected:
+	private:
 		friend spingrid;
+		friend grid_test;
 		int init(unsigned int row, unsigned int col);
 		int updategamestate();
 		int open__(int row, int col);
 		int allocate__(unsigned int row, unsigned int col, unsigned int bombs);
 		int count_neighbor(int row, int col, cell value);
+		/**Checks the contents of `_grid` with bounds checking**/
 		cell peek(unsigned int row, unsigned int col) const {
 			if (iscontained(row, col)) return (cell)_grid[row][col]; else return ms_error; 
 		}
@@ -103,20 +105,10 @@ namespace ms {
 		char ** _grid;
 		char ** _visgrid;
 		gamestate _gs;
-		struct grid_rng {
-		time_t get_seed(){
-#ifdef TESTMODE
-			return 14789032;
-#else
-			return time(NULL);
-#endif
-		}
-			std::mt19937 mt;
-			grid_rng() { mt.seed(get_seed()); }
-		} rng;
+		static std::mt19937 rng;
 	public:
 		grid(unsigned int height, unsigned int width, unsigned int bombs);
-		grid(unsigned int height, unsigned int width, unsigned int bombs, cell * arr, grid_copy_type gct);
+		grid(unsigned int height, unsigned int width, cell ** arr);
 		grid(const grid& copy, grid_copy_type gct);
 
 		unsigned int width() const { return _width; }
