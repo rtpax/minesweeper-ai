@@ -274,6 +274,64 @@ namespace ms {
 
 	/**
 	 *
+	 * Find all regions that can be deduced from the existing regions.
+	 * 
+	 * Calculate the intersection of each pair of regions
+	 *   - if empty, discard it
+	 *   - if nonempty, add the intersection and subraction to `this.aux_regions`
+	 * 
+	 * Returns the number of regions added (note that it does not include modified regions, only added)
+	 * 
+	 * Unlike solver::find_aux_regions it stops as soon as a cells can be added to the queue
+	 * 
+	 * Complexity of the inner loop upper bound \f$O(N^4)\f$, lower bound \f$\Omega (N^2)\f$.
+	 * Outer loop's complexity is nontrivial, runs until it cannot make any more aux regions.
+	 * 
+	 **/
+	int solver::lazy_aux_regions() {
+
+		debug_printf("lazy_aux_regions...");
+		trim_regions();
+		int size = regions.size();
+
+
+		for (bool made_change = 1; made_change;) { //loops as long as nothing was added
+			if(fill_queue())
+				break;
+
+			made_change = 0;
+			std::list<region> region_queue;
+
+			if(!regions.empty())//otherwise the conditional will never be false
+			for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
+				for(literator rj = it_add(ri, 1); rj != regions.end(); ++rj) {
+					region _inter = (*rj).intersect(*ri);
+					if (_inter.size() > 0) {
+						region _subij = (*ri).subtract(*rj);
+						region _subji = (*rj).subtract(*ri);
+						region_queue.push_back(_inter);
+						region_queue.push_back(_subij);
+						region_queue.push_back(_subji);
+					}
+				}
+			}
+
+			for(region& to_add : region_queue) {
+				if(add_region(to_add)) {
+					made_change = 1;
+				}
+			}
+
+		}
+		assert_each_trim();
+		assert_norepeat();
+
+		debug_printf("done\n");
+		return regions.size() - size;
+	}
+
+	/**
+	 *
 	 * Removes all empty regions and regions that give no information about min max beyong their size (min = 0, max = size).
 	 * Merges regions that have the same number of cells.
 	 * 
@@ -413,7 +471,7 @@ namespace ms {
 	int solver::find_regions() {
 		trim_regions();
 		find_base_regions();
-		find_aux_regions();
+		lazy_aux_regions();
 		if(!(safe_queue.empty() && bomb_queue.empty()))
 			return 0;
 
@@ -626,18 +684,19 @@ namespace ms {
 	 * 
 	 **/
 	int solver::fill_queue() {
+		int num_added = 0;
 		for(region& check : regions) {
 			if(check.size() == check.min()) { //implies size == max == min for all valid state regions
 				for(rc_coord bomb : check) {
-					add_to_bomb_queue(bomb);
+					num_added += add_to_bomb_queue(bomb);
 				}
 			} else if (check.max() == 0) {
 				for(rc_coord safe : check) {
-					add_to_safe_queue(safe);
+					num_added += add_to_safe_queue(safe);
 				}				
 			}
 		}
-		return 0;
+		return num_added;
 	}
 
 	/**
