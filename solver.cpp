@@ -260,17 +260,24 @@ namespace ms {
 			made_change = 0;
 			std::list<region> region_queue;
 
-			if(!regions.empty())//otherwise the conditional will never be false
-			for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
-				for(literator rj = it_add(ri, 1); rj != regions.end(); ++rj) {
-					region _inter = rj->intersect(*ri);
-					if (_inter.size() > 0) {
-						region _subij = ri->subtract(*rj);
-						region _subji = rj->subtract(*ri);
-						region_queue.push_back(_inter);
-						region_queue.push_back(_subij);
-						region_queue.push_back(_subji);
+			for(literator ri = regions.begin(); ri != regions.end(); ++ri) {
+				std::vector<literator> overlaps = { ri };
+				for(rc_coord cell : *ri) {
+					for(literator over : cell_keys[cell.row][cell.col]) {
+						std::vector<literator>::iterator index = std::find(overlaps.begin(),overlaps.end(),over);
+						if(index == overlaps.end()) {
+							assert(overlaps.end() == std::find_if(overlaps.begin(),overlaps.end(),[over](literator l){return *l == *over;}));
+							overlaps.push_back(over);
+						} else {
+							assert(overlaps.end() != std::find_if(overlaps.begin(),overlaps.end(),[over](literator l){return *l == *over;}));
+						}
 					}
+				}
+				if(!overlaps.empty())
+				for(std::vector<literator>::iterator rj = it_add(overlaps.end(),1); rj != overlaps.end(); ++rj) {
+					region_queue.push_back(ri->intersect(**rj));
+					region_queue.push_back(ri->subtract(**rj));
+					region_queue.push_back((*rj)->subtract(*ri));
 				}
 			}
 
@@ -318,38 +325,24 @@ namespace ms {
 			made_change = 0;
 			std::list<region> region_queue;
 
-			// for(literator ri = regions.begin(); ri != regions.end(); ++ri) {
-			// 	std::vector<literator> overlaps = { ri };
-			// 	for(rc_coord cell : *ri) {
-			// 		for(literator over : cell_keys[cell.row][cell.col]) {
-			// 			std::vector<literator>::iterator index = std::find(overlaps.begin(),overlaps.end(),*over);
-			// 			if(index == overlaps.end()) {
-			// 				assert(overlaps.end() == std::find_if(overlaps.begin(),overlaps.end(),[over](literator l){return *l == *over;}));
-			// 				overlaps.push_back(over);
-			// 			} else {
-			// 				assert(overlaps.end() != std::find_if(overlaps.begin(),overlaps.end(),[over](literator l){return *l == *over;}));
-			// 			}
-			// 		}
-			// 	}
-			// 	if(!overlaps.empty())
-			// 	for(std::vector<literator>::iterator rj = it_add(overlaps.begin(),1); rj != overlaps.end(); ++rj) {
-			// 		region_queue.push_back(ri->intersect(**rj));
-			// 		region_queue.push_back(ri->subtract(**rj));
-			// 		region_queue.push_back((*rj)->subtract(*ri));
-			// 	}
-			// }
-
-			if(!regions.empty())//otherwise the conditional will never be false
-			for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
-				for(literator rj = it_add(ri, 1); rj != regions.end(); ++rj) {
-					region _inter = rj->intersect(*ri);
-					if (_inter.size() > 0) {
-						region _subij = ri->subtract(*rj);
-						region _subji = rj->subtract(*ri);
-						region_queue.push_back(_inter);
-						region_queue.push_back(_subij);
-						region_queue.push_back(_subji);
+			for(literator ri = regions.begin(); ri != regions.end(); ++ri) {
+				std::vector<literator> overlaps = { ri };
+				for(rc_coord cell : *ri) {
+					for(literator over : cell_keys[cell.row][cell.col]) {
+						std::vector<literator>::iterator index = std::find(overlaps.end(),overlaps.end(),over);
+						if(index == overlaps.end()) {
+							assert(overlaps.end() == std::find_if(overlaps.begin(),overlaps.end(),[&over](literator l){return *l == *over;}));
+							overlaps.push_back(over);
+						} else {
+							assert(overlaps.end() != std::find_if(overlaps.begin(),overlaps.end(),[&over](literator l){return *l == *over;}));
+						}
 					}
+				}
+				if(!overlaps.empty())
+				for(std::vector<literator>::iterator rj = it_add(overlaps.begin(),1); rj != overlaps.end(); ++rj) {
+					region_queue.push_back(ri->intersect(**rj));
+					region_queue.push_back(ri->subtract(**rj));
+					region_queue.push_back((*rj)->subtract(*ri));
 				}
 			}
 
@@ -398,17 +391,26 @@ namespace ms {
 				ri = remove_region(ri);
 			}
 		}
-		if(!regions.empty())//otherwise the conditional will never be false
-		for(literator ri = regions.begin(); it_add(ri, 1) != regions.end() && ri != regions.end(); ++ri) {
-			for(literator rj = it_add(ri, 1); rj != regions.end();) {
-				if (ri->samearea(*rj)) {
-					*ri = ri->merge(*rj);
-					rj = remove_region(rj);
+		
+		for(size_t row = 0; row < g.height(); ++row) {
+			for(size_t col = 0; col < g.width(); ++col) {
+				std::list<literator>& key = cell_keys[row][col];
+				if(!key.empty())//otherwise the conditional will never be false
+				for(lliterator ki = key.begin(); it_add(ki, 1) != key.end() && ki != key.end(); ++ki) {
+					for(lliterator kj = it_add(ki, 1); kj != key.end();) {
+						if ((*ki)->samearea(**kj)) {
+							**ki = (*ki)->merge(**kj);
+							lliterator kj_next = kj;
+							++kj_next;
+							remove_region(*kj);
+							kj = kj_next;
 
-					assert(!ri->empty());
-				}
-				else {
-					++rj;
+							assert(!(*ki)->empty());
+						}
+						else {
+							++kj;
+						}
+					}
 				}
 			}
 		}
