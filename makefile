@@ -32,7 +32,7 @@ OUT=sweep.exe
 
 all: $(OUT)
 
-fast: $(eval OPTIMIZATION=-O2) $(eval DEBUG_LEVEL=) $(OUT)
+fast: $(eval OPTIMIZATION=-O2) $(eval DEBUG_LEVEL=-DNDEBUG) $(OUT)
 
 nolink: $(OBJS)
 

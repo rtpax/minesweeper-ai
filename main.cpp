@@ -87,7 +87,7 @@ int notmain() {
 }
 
 int main() {
-    ms::solver ai(9,13,20);
+    ms::solver ai(300,300,20000);
 
     std::string line;
     std::string row;

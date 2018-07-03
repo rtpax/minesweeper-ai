@@ -1,5 +1,6 @@
 #include "solver.h"
 #include <stdexcept>
+#include <algorithm>
 
 #if DEBUG>1
 	#define debug_printf(...) printf(__VA_ARGS__)
@@ -19,9 +20,11 @@ namespace ms {
 
 		/****/
 		typedef std::list<region>::iterator literator;
+		typedef std::list<literator>::iterator lliterator;
 
 		/**Allows adding to r-value iterators that do not support random access**/
-		literator it_add(literator base, int amount) {
+		template <class iter>
+		iter it_add(iter base, int amount) {
 			for(int i = 0; i < amount; ++i)
 				++base;
 			for(int i = 0; i > amount; --i)
@@ -41,12 +44,12 @@ namespace ms {
 		}
 
 		/**Print information about rc_coord iff debug printing is enabled**/
-		void debug_print_rc_coord(rc_coord& arg) {
+		void debug_print_rc_coord(const rc_coord& arg) {
 			debug_printf("(%u,%u)",arg.row,arg.col);
 		}
 		
 		/**Print information about region iff debug printing is enabled**/
-		void debug_print_region(region& arg) {
+		void debug_print_region(const region& arg) {
 			debug_printf("{[%zu:%u,%u]",arg.size(),arg.min(),arg.max());
 			for(rc_coord rc : arg) {
 				debug_print_rc_coord(rc);
@@ -143,6 +146,13 @@ namespace ms {
 	#define assert_norepeat()
 #endif
 
+	int solver::init_cell_keys() {
+		cell_keys = new std::list<literator>*[g.height()];
+		for(unsigned i = 0; i < g.height(); ++i) {
+			cell_keys[i] = new std::list<literator>[g.width()]();
+		}
+		return 0;
+	}
 
 	/**
 	 *
@@ -150,7 +160,10 @@ namespace ms {
 	 *
 	 **/
 	solver::solver(const grid& start) : g(start, grid::FULL_COPY) {
-		
+		cell_keys = new std::list<literator>*[g.height()];
+		for(unsigned i = 0; i < g.height(); ++i) {
+			cell_keys[i] = new std::list<literator>[g.width()]();
+		}
 	}
 
 	/**
@@ -159,7 +172,10 @@ namespace ms {
 	 * 
 	 **/
 	solver::solver(unsigned int height, unsigned int width, unsigned int bombs) : g(height,width,bombs) {
-		
+		cell_keys = new std::list<literator>*[g.height()];
+		for(unsigned i = 0; i < g.height(); ++i) {
+			cell_keys[i] = new std::list<literator>[g.width()]();
+		}
 	}
 
 
@@ -247,10 +263,10 @@ namespace ms {
 			if(!regions.empty())//otherwise the conditional will never be false
 			for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
 				for(literator rj = it_add(ri, 1); rj != regions.end(); ++rj) {
-					region _inter = (*rj).intersect(*ri);
+					region _inter = rj->intersect(*ri);
 					if (_inter.size() > 0) {
-						region _subij = (*ri).subtract(*rj);
-						region _subji = (*rj).subtract(*ri);
+						region _subij = ri->subtract(*rj);
+						region _subji = rj->subtract(*ri);
 						region_queue.push_back(_inter);
 						region_queue.push_back(_subij);
 						region_queue.push_back(_subji);
@@ -302,13 +318,34 @@ namespace ms {
 			made_change = 0;
 			std::list<region> region_queue;
 
+			// for(literator ri = regions.begin(); ri != regions.end(); ++ri) {
+			// 	std::vector<literator> overlaps = { ri };
+			// 	for(rc_coord cell : *ri) {
+			// 		for(literator over : cell_keys[cell.row][cell.col]) {
+			// 			std::vector<literator>::iterator index = std::find(overlaps.begin(),overlaps.end(),*over);
+			// 			if(index == overlaps.end()) {
+			// 				assert(overlaps.end() == std::find_if(overlaps.begin(),overlaps.end(),[over](literator l){return *l == *over;}));
+			// 				overlaps.push_back(over);
+			// 			} else {
+			// 				assert(overlaps.end() != std::find_if(overlaps.begin(),overlaps.end(),[over](literator l){return *l == *over;}));
+			// 			}
+			// 		}
+			// 	}
+			// 	if(!overlaps.empty())
+			// 	for(std::vector<literator>::iterator rj = it_add(overlaps.begin(),1); rj != overlaps.end(); ++rj) {
+			// 		region_queue.push_back(ri->intersect(**rj));
+			// 		region_queue.push_back(ri->subtract(**rj));
+			// 		region_queue.push_back((*rj)->subtract(*ri));
+			// 	}
+			// }
+
 			if(!regions.empty())//otherwise the conditional will never be false
 			for(literator ri = regions.begin(); it_add(ri, 1) != regions.end(); ++ri) {
 				for(literator rj = it_add(ri, 1); rj != regions.end(); ++rj) {
-					region _inter = (*rj).intersect(*ri);
+					region _inter = rj->intersect(*ri);
 					if (_inter.size() > 0) {
-						region _subij = (*ri).subtract(*rj);
-						region _subji = (*rj).subtract(*ri);
+						region _subij = ri->subtract(*rj);
+						region _subji = rj->subtract(*ri);
 						region_queue.push_back(_inter);
 						region_queue.push_back(_subij);
 						region_queue.push_back(_subji);
@@ -347,22 +384,28 @@ namespace ms {
 
 		for (literator ri = regions.begin(); ri != regions.end();) {
 			if (region_is_helpful(*ri)) {
-				if(!(*ri).is_trim()) {
-
+				if(ri->trim()) {
+					if (!region_is_helpful(*ri)) {
+						ri = remove_region(ri);
+					} else {
+						++ri;
+					}
+				} else {
+					++ri;
 				}
-				(*ri).trim(); //can never make a size 0 from nonzero
-				++ri;
 			}
 			else {
-				ri = regions.erase(ri);
+				ri = remove_region(ri);
 			}
 		}
 		if(!regions.empty())//otherwise the conditional will never be false
 		for(literator ri = regions.begin(); it_add(ri, 1) != regions.end() && ri != regions.end(); ++ri) {
 			for(literator rj = it_add(ri, 1); rj != regions.end();) {
-				if ((*ri).samearea(*rj)) {
-					*ri = (*ri).merge(*rj);
-					rj = regions.erase(rj);
+				if (ri->samearea(*rj)) {
+					*ri = ri->merge(*rj);
+					rj = remove_region(rj);
+
+					assert(!ri->empty());
 				}
 				else {
 					++rj;
@@ -376,15 +419,59 @@ namespace ms {
 	/**
 	 *
 	 * Adds a region to the list of regions, merging if a region already exists covering the same area.
-	 * Skips regions that offer no information
+	 * Skips regions that offer no information. If a new region is added, add it to the appropriate cell_keys
 	 * 
-	 * Returns 0 if merging occurs, otherwise returns 1. 
+	 * Returns 0 if merging occurs or region not added, otherwise returns 1. 
 	 *
 	 * Complexity \f$O(N)\f$
 	 * 
 	 **/
-	int solver::add_region(const region& arg) {
-		return merge_region_into_list(regions,arg);
+	int solver::add_region(const region& to_add) {
+		debug_printf("adding region ");
+		debug_print_region(to_add);
+		debug_printf("...\n");
+		if(!region_is_helpful(to_add)) {
+			debug_printf("skipping because unhelpful\n");
+			return 0;
+		}
+
+		std::list<literator>& key = cell_keys[to_add.begin()->row][to_add.begin()->col];//guaranteed to have a first element, otherwise would fail early
+
+		for (literator ri : key) {
+			if (to_add.samearea(*ri)) {
+				debug_printf("merging ");
+				debug_print_region(*ri);
+				debug_printf(" and ");
+				debug_print_region(to_add);
+				debug_printf("\n");
+				*ri = ri->merge(to_add);
+				assert_nonempty(*ri);
+				return 0;
+			}
+		}
+
+		debug_printf("adding region to list...\n");
+		regions.push_back(to_add);
+		literator added = it_add(regions.end(), -1);
+
+		debug_printf("adding region to keys...\n");
+		for(rc_coord cell : *added) {
+			debug_printf("    adding region to key: ");
+			debug_print_rc_coord(cell);
+			debug_printf("\n");
+			cell_keys[cell.row][cell.col].push_back(added);
+		}
+		debug_printf("done\n");
+
+		return 1;
+	}
+
+	literator solver::remove_region(literator to_remove) {
+		for(rc_coord cell : *to_remove) {
+			std::list<literator>& key = cell_keys[cell.row][cell.col];
+			key.remove(to_remove);
+		}
+		return regions.erase(to_remove);
 	}
 
 	/**
@@ -402,33 +489,7 @@ namespace ms {
 	}
 
 
-	/**
-	 *
-	 * a chain is a series of regions that both:
-	 *   - have exactly 1 bomb
-	 *   - have exactly one cell that does not overlap
-	 * 
-	 * no two complete chains overlap
-	 * 
-	 **/
-	int solver::find_chains() {
-		std::list<region> unchecked_regions;
-		chains.clear();
 
-		for(region& r : regions) {
-			unchecked_regions.push_back(r);
-		}
-
-		while(!unchecked_regions.empty()) {
-			if(ispair(unchecked_regions.front())) {
-				chains.push_back(one_chain(unchecked_regions));
-			} else {
-				unchecked_regions.pop_front();
-			}
-		}
-
-		return 0;
-	}
 
 	/**
 	 *
@@ -495,44 +556,18 @@ namespace ms {
 	 * 
 	 **/
 	int solver::remove_safe_from_all_regions(rc_coord cell) {
+		std::list<literator>& key = cell_keys[cell.row][cell.col];
 		int found = 0;
-		for(literator ri = regions.begin(); ri != regions.end();) {
-			switch((*ri).remove_safe(cell)) {
-			case 0://success
-				found = 1;
-			case 1://not in region
-				if((*ri).empty()) {
-					ri = regions.erase(ri);
-				} else {
-					++ri;
-				}
-				break;
 
-			case 2://we thought we knew this was wrong
-				debug_printf("(%u,%u){\n",cell.row,cell.col);
-				for(literator rj = regions.begin(); rj != regions.end(); ++rj) {
-					if(ri == rj) 
-						debug_printf("**");
-					else
-						debug_printf("  ");
-					debug_print_region(*rj);
-					if(ri == rj) {
-						debug_printf("**\n");
-					} else {
-						debug_printf("  \n");
-					}
-					}
-				debug_printf("}\n");
-				throw std::logic_error("Attempted to remove a safe space from a region that has no safe space");
-			default:
-				throw std::logic_error("Impossible return value from remove_safe");
-			}
+		while(!key.empty()) {
+			int err = key.front()->remove_safe(cell);
+			assert(err != 2 && "Attempted to remove safe from region with no safe spaces");
+			key.pop_front();
+			++found;
 		}
-
 
 		for(std::list<rc_coord>::iterator ri = safe_queue.begin(); ri != safe_queue.end();) {
 			if(*ri == cell) {
-				debug_printf("WARNING: removing repeated cell (%d,%d) from safe queue.\n", (*ri).row, (*ri).col);
 				ri = safe_queue.erase(ri);
 			} else {
 				++ri;
@@ -555,50 +590,39 @@ namespace ms {
 	 * 
 	 **/
 	int solver::remove_bomb_from_all_regions(rc_coord cell) {
-		int found = 0;
-		for(literator ri = regions.begin(); ri != regions.end();) {
-			switch((*ri).remove_bomb(cell)) {
-			case 0://success
-				found = 1;
-				//fallthrough
-			case 1://not in region
-				if((*ri).empty()) {
-					ri = regions.erase(ri);
-				} else {
-					++ri;
-				}
-				break;
+		debug_printf("removing bomb from cell ");
+		debug_print_rc_coord(cell);
+		debug_printf("...\n");
 
-			case 2://we thought we knew this was wrong
-				debug_printf("(%u,%u){\n",cell.row,cell.col);
-				for(literator rj = regions.begin(); rj != regions.end(); ++rj) {
-					if(ri == rj) 
-						debug_printf("**");
-					else
-						debug_printf("  ");
-					debug_print_region(*rj);
-					if(ri == rj) {
-						debug_printf("**\n");
-					} else {
-						debug_printf("  \n");
-					}
-					}
-				debug_printf("}\n");
-				throw std::logic_error("Attempted to remove a bomb space from a region that has no bomb space");
-			default:
-				throw std::logic_error("Impossible return value from remove_bomb");
-			}
+		std::list<literator>& key = cell_keys[cell.row][cell.col];
+		int found = 0;
+
+		while(!key.empty()) {
+			debug_printf("removing bomb from region ");
+			debug_print_region(*key.front());
+			int err = key.front()->remove_bomb(cell);
+			debug_printf("\nresulting region ");
+			debug_print_region(*key.front());
+			debug_printf("\n");
+			assert(err != 2 && "Attempted to remove safe from region with no safe spaces");
+			key.pop_front();
+			++found;
 		}
 
 		for(std::list<rc_coord>::iterator ri = bomb_queue.begin(); ri != bomb_queue.end();) {
 			if(*ri == cell) {
-				debug_printf("WARNING: removing repeated cell (%d,%d) from bomb queue.\n", (*ri).row, (*ri).col);
+				debug_printf("  removing ");
+				debug_print_rc_coord(*ri);
+				debug_printf(" from queue\n");
 				ri = bomb_queue.erase(ri);
 			} else {
+				debug_printf("  skipping cell ");
+				debug_print_rc_coord(*ri);
+				debug_printf("\n");
 				++ri;
 			}
 		}
-
+		
 		return found;
 	}
 
@@ -753,7 +777,14 @@ namespace ms {
 
 		if(!bomb_queue.empty()) {
 			rc_coord ret = bomb_queue.front();
-			assert(apply_flag(ret) == 0);//removes ret
+			int err = apply_flag(ret);
+			debug_printf("bomb_queue:\n");
+			for(rc_coord bomb : bomb_queue) {
+				debug_printf("    ");
+				debug_print_rc_coord(bomb);
+				debug_printf("\n");
+			}
+			assert(err == 0);
 			return ret;
 		} else if(!safe_queue.empty()) {
 			rc_coord ret = safe_queue.front();

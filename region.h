@@ -94,6 +94,8 @@ namespace ms {
 		const rc_coord& operator[](int index) const { return _cells[index]; }
 		std::vector<rc_coord>::iterator begin() { return _cells.begin(); }
 		std::vector<rc_coord>::iterator end() { return _cells.end(); }
+		std::vector<rc_coord>::const_iterator begin() const { return _cells.begin(); }
+		std::vector<rc_coord>::const_iterator end() const { return _cells.end(); }
 
 #ifdef DEBUG
 		#define assert_trim(arg) do{ region test = (arg); test.trim(); assert(test == (arg)); }while(0)

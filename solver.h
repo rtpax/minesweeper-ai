@@ -56,6 +56,13 @@ namespace ms {
 		std::list<region> regions;
 		std::list<rc_coord> safe_queue;
 		std::list<rc_coord> bomb_queue;
+		std::list<std::list<region>::iterator> ** cell_keys;
+
+		int init_cell_keys();
+		std::list<region>::iterator remove_region(std::list<region>::iterator to_remove);
+		int add_region(const region& to_add);
+		int remove_safe_from_all_regions(rc_coord cell);
+		int remove_bomb_from_all_regions(rc_coord cell);
 
 		int clear_queue();
 		int apply_open(rc_coord cell);
@@ -63,8 +70,6 @@ namespace ms {
 		
 		grid g;
 
-		int add_region(const region& arg);
-		int find_in_regions();
 
 		int trim_regions();
 
@@ -79,8 +84,6 @@ namespace ms {
 		int fill_queue();
 		int add_to_safe_queue(rc_coord to_add);
 		int add_to_bomb_queue(rc_coord to_add);
-		int remove_safe_from_all_regions(rc_coord cell);
-		int remove_bomb_from_all_regions(rc_coord cell);
 
 		std::vector<std::vector<region>> chains;
 
@@ -94,7 +97,7 @@ namespace ms {
 		int find_guarantees();
 		int cleanup();
 
-
+		
 	};
 
 
