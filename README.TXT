@@ -19,11 +19,3 @@ general overview of how it works:
     bomb, but lots decided by the specific number. rationale being that numbers that guarantee a 
     lot just by not being a bomb are more likely to be a bomb. the truthfulness of this is to be
     investigated). After picking the best, go to the start.
-
-
-current state:
-region.cpp and grid.cpp are working completely
-
-solver.cpp is on it's way
-
-the rest are only prototypes

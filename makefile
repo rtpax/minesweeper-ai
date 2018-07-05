@@ -4,7 +4,7 @@ CC=gcc
 CXX=g++
 
 OPTIMIZATION=-O0 -fno-inline
-DEBUG_LEVEL=-DDEBUG=2
+DEBUG_LEVEL=-DDEBUG
 
 CPPFLAGS=$(DEBUG_LEVEL)
 CXXFLAGS=-g -c -Wall $(OPTIMIZATION)
@@ -32,7 +32,16 @@ OUT=sweep.exe
 
 all: $(OUT)
 
-fast: $(eval OPTIMIZATION=-O2) $(eval DEBUG_LEVEL=-DNDEBUG) $(OUT)
+set-fast-vars:
+	$(eval OPTIMIZATION=-O2) 
+	$(eval DEBUG_LEVEL=-DNDEBUG) 
+
+fast: set-fast-vars all
+
+set-debug-vars:
+	$(eval DEBUG_LEVEL=-DDEBUG=2)
+
+debug: set-debug-vars all
 
 nolink: $(OBJS)
 

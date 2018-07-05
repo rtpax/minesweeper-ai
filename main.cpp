@@ -87,7 +87,7 @@ int notmain() {
 }
 
 int main() {
-    ms::solver ai(300,300,20000);
+    ms::solver ai(9,10,20);
 
     std::string line;
     std::string row;
@@ -95,15 +95,23 @@ int main() {
     
 
     while(ai.view_grid().gamestate() == ms::grid::RUNNING || ai.view_grid().gamestate() == ms::grid::NEW) {
-        printms(ai.view_grid());
+        //printms(ai.view_grid());
 
         std::cout << "enter input of the form 'row, column':\n";
 
         std::getline(std::cin, line);
 
         if(line == "sweep") {
-            int opened = ai.solve_certain();
+            int opened = ai.solve();
             std::cout << opened << " cells opened\n";
+        } else if (line == "print") {
+            printms(ai.view_grid());
+        } else if (line == "sure") {
+            int opened = ai.solve_certain();
+            std::cout << opened << " cells opened\n";            
+        } else if (line == "s") {
+            ms::rc_coord opened = ai.step_certain();
+            std::cout << "solver opening cell (" << opened.row << "," << opened.col << ")\n";
         } else {
             int r, c;
             bool parse_fail = false;
@@ -121,7 +129,7 @@ int main() {
             }
 
             if(parse_fail) {
-                ms::rc_coord opened = ai.step_certain();
+                ms::rc_coord opened = ai.step();
                 std::cout << "solver opening cell (" << opened.row << "," << opened.col << ")\n";
             }
             if(!parse_fail) {

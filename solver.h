@@ -33,13 +33,9 @@ namespace ms {
 		solver(const grid& g);
 		solver(unsigned int height, unsigned int width, unsigned int bombs);
 		
-		/**Runs until win or loss. \n Returns gamestate.*/
 		int solve();
-		/**Takes one turn.\n Returns the cell opened/flagged.*/
 		rc_coord step();
-		/**Runs until there is a chance it may fail (does nothing if board is not started). \n Returns the number of steps taken.*/
 		int solve_certain();
-		/**Steps iff the solver is certain it will not fail (does nothing if the board is not started). \n Returns the cell opened/flagged, or { 0xffff,0xffff } if it does not open a cell*/
 		rc_coord step_certain();
 
 		int manual_open(rc_coord cell);
@@ -53,6 +49,8 @@ namespace ms {
 		/**Returns a complete copy of the games internal grid.*/
 		grid get_grid() const { return grid(g, grid::FULL_COPY); } 
 	protected:
+		static std::mt19937 rng;
+
 		std::list<region> regions;
 		std::list<rc_coord> safe_queue;
 		std::list<rc_coord> bomb_queue;

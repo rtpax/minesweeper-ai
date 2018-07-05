@@ -246,7 +246,7 @@ namespace ms {
 	 * 
 	 * Returns the number of regions added (note that it does not include modified regions, only added)
 	 * 
-	 * Complexity of the inner loop upper bound \f$O(N^4)\f$, lower bound \f$\Omega (N^2)\f$.
+	 * Complexity of the inner loop \f$\O(N^2)\f$.
 	 * Outer loop's complexity is nontrivial, runs until it cannot make any more aux regions.
 	 * 
 	 **/
@@ -307,8 +307,8 @@ namespace ms {
 	 * 
 	 * Unlike solver::find_aux_regions it stops as soon as a cells can be added to the queue
 	 * 
-	 * Complexity of the inner loop upper bound \f$O(N^4)\f$, lower bound \f$\Omega (N^2)\f$.
-	 * Outer loop's complexity is nontrivial, runs until it cannot make any more aux regions.
+	 * Complexity of the inner loop \f$\O(N^2)\f$.
+	 * Outer loop's complexity is nontrivial, runs until it has found aux regions (often just one iteration).
 	 * 
 	 **/
 	int solver::lazy_aux_regions() {
@@ -329,7 +329,7 @@ namespace ms {
 				std::vector<literator> overlaps = { ri };
 				for(rc_coord cell : *ri) {
 					for(literator over : cell_keys[cell.row][cell.col]) {
-						std::vector<literator>::iterator index = std::find(overlaps.end(),overlaps.end(),over);
+						std::vector<literator>::iterator index = std::find(overlaps.begin(),overlaps.end(),over);
 						if(index == overlaps.end()) {
 							assert(overlaps.end() == std::find_if(overlaps.begin(),overlaps.end(),[&over](literator l){return *l == *over;}));
 							overlaps.push_back(over);
@@ -368,6 +368,8 @@ namespace ms {
 	 * Returns the number of regions removed (2 being merged counts as 1 being removed)
 	 * 
 	 * complexity \f$O(N^2)\f$
+	 * 
+	 * TODO increase speed by using cell_keys
 	 *
 	 **/
 	int solver::trim_regions() {
@@ -468,6 +470,13 @@ namespace ms {
 		return 1;
 	}
 
+	/**
+	 * 
+	 * Removes the specified region from the list of regions and all associated keys.
+	 * 
+	 * Complexity \f$O(N )\f$
+	 * 
+	 **/
 	literator solver::remove_region(literator to_remove) {
 		for(rc_coord cell : *to_remove) {
 			std::list<literator>& key = cell_keys[cell.row][cell.col];
@@ -563,11 +572,19 @@ namespace ms {
 
 		while(!key.empty()) {
 			int err = key.front()->remove_safe(cell);
+			(void)err; //suppress unused warnings
 			assert(err != 2 && "Attempted to remove safe from region with no safe spaces");
 			key.pop_front();
 			++found;
 		}
 
+		for(std::list<rc_coord>::iterator ri = bomb_queue.begin(); ri != bomb_queue.end();) {
+			if(*ri == cell) {
+				ri = bomb_queue.erase(ri);
+			} else {
+				++ri;
+			}
+		}
 		for(std::list<rc_coord>::iterator ri = safe_queue.begin(); ri != safe_queue.end();) {
 			if(*ri == cell) {
 				ri = safe_queue.erase(ri);
@@ -603,6 +620,7 @@ namespace ms {
 			debug_printf("removing bomb from region ");
 			debug_print_region(*key.front());
 			int err = key.front()->remove_bomb(cell);
+			(void) err; //suppresss unused warnings
 			debug_printf("\nresulting region ");
 			debug_print_region(*key.front());
 			debug_printf("\n");
@@ -613,14 +631,15 @@ namespace ms {
 
 		for(std::list<rc_coord>::iterator ri = bomb_queue.begin(); ri != bomb_queue.end();) {
 			if(*ri == cell) {
-				debug_printf("  removing ");
-				debug_print_rc_coord(*ri);
-				debug_printf(" from queue\n");
 				ri = bomb_queue.erase(ri);
 			} else {
-				debug_printf("  skipping cell ");
-				debug_print_rc_coord(*ri);
-				debug_printf("\n");
+				++ri;
+			}
+		}
+		for(std::list<rc_coord>::iterator ri = safe_queue.begin(); ri != safe_queue.end();) {
+			if(*ri == cell) {
+				ri = safe_queue.erase(ri);
+			} else {
 				++ri;
 			}
 		}
@@ -758,7 +777,13 @@ namespace ms {
 	}
 
 
-
+	/**
+	 * 
+	 * Runs until the next step may fail.
+	 * 
+	 * Returns the number of steps taken.
+	 * 
+	 **/
 	int solver::solve_certain() {
 		int ret = 0;
 		while(step_certain() != rc_coord{0xffff,0xffff})
@@ -766,24 +791,40 @@ namespace ms {
 		return ret;
 	}
 
-
+	/**
+	 * 
+	 * Opens/flags a cell if it is certain it will be correct.
+	 * 
+	 * Returns the cell opened, or {0xffff,0xffff} if none is opened
+	 * 
+	 **/
 	rc_coord solver::step_certain() {
 		if(g.gamestate() != grid::RUNNING) {
 			return rc_coord{ 0xffff,0xffff };
 		}
 
 		if(bomb_queue.empty() && safe_queue.empty()) {
-			find_regions();
 			fill_queue();
+			if(bomb_queue.empty() && safe_queue.empty()) {
+				find_regions();
+				fill_queue();
+			}
 		}
 
 		if(!bomb_queue.empty()) {
 			rc_coord ret = bomb_queue.front();
 			int err = apply_flag(ret);
+			(void) err; //suppress unused warnings
 			debug_printf("bomb_queue:\n");
 			for(rc_coord bomb : bomb_queue) {
 				debug_printf("    ");
 				debug_print_rc_coord(bomb);
+				debug_printf("\n");
+			}
+			debug_printf("safe_queue:\n");
+			for(rc_coord safe : safe_queue) {
+				debug_printf("    ");
+				debug_print_rc_coord(safe);
 				debug_printf("\n");
 			}
 			assert(err == 0);
@@ -800,11 +841,67 @@ namespace ms {
 				debug_printf("cells opened: %hhu\nrow:%u\ncol:%u\n",open_status,ret.row,ret.col);
 				throw std::logic_error("Opened the wrong number of cells");
 			}
+			debug_printf("safe_queue:\n");
+			for(rc_coord safe : safe_queue) {
+				debug_printf("    ");
+				debug_print_rc_coord(safe);
+				debug_printf("\n");
+			}
 			return ret;
 		} else {
 			return rc_coord{ 0xffff,0xffff };
 		}
 	}
+
+	std::mt19937 solver::rng(time(NULL));
+
+	/**
+	 * 
+	 * Runs until win or loss.
+	 * 
+	 * Returns gamestate
+	 *  
+	 **/
+	int solver::solve() {
+		int ret = 0;
+		while(step() != rc_coord{0xffff,0xffff})
+			++ret;
+		return ret;
+	}
+
+	/**
+	 * 
+	 * Opens/flags a cell as long a game is running or ready to start running.
+	 * Opens cells that are certain first before attempting to open a new cell.
+	 * 
+	 * Returns the cell opened, or {0xffff,0xffff} if none is opened
+	 * 
+	 **/
+	rc_coord solver::step() {
+		if(g.gamestate() != grid::RUNNING && g.gamestate() != grid::NEW) {
+			return rc_coord{ 0xffff,0xffff };
+		}
+
+		rc_coord ret = step_certain();
+		if(ret != rc_coord{ 0xffff,0xffff })
+			return ret;
+
+		std::vector<rc_coord> choices;
+		for(unsigned row = 0; row < g.height(); ++row) {
+			for(unsigned col = 0; col < g.height(); ++col) {
+				if(g.get(row,col) == grid::ms_hidden || g.get(row,col) == grid::ms_question) {
+					choices.push_back(rc_coord{row,col});
+				}
+			}
+		}
+
+		int open_index = rng() % choices.size();
+
+		manual_open(choices[open_index]);
+		return choices[open_index];
+	}
+
+
 
 
 }
