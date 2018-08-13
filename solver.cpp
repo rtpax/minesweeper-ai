@@ -226,6 +226,7 @@ namespace ms {
 
 							}
 					if(!reg.empty()) {
+						assert(gotten >= num_flags);
 						reg.set_count(gotten - num_flags);
 						add_region(reg);
 					}
@@ -895,10 +896,13 @@ namespace ms {
 			}
 		}
 
-		int open_index = rng() % choices.size();
-
-		manual_open(choices[open_index]);
-		return choices[open_index];
+		if(choices.size() > 0) {
+			int open_index = rng() % choices.size();
+			apply_open(choices[open_index]);
+			return choices[open_index];
+		} else {
+			return rc_coord{ 0xffff,0xffff };
+		}
 	}
 
 

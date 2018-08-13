@@ -102,16 +102,19 @@ int main() {
         std::getline(std::cin, line);
 
         if(line == "sweep") {
-            int opened = ai.solve();
-            std::cout << opened << " cells opened\n";
+            int opened = ai.solve_certain();
+            std::cout << opened << " steps taken\n";
         } else if (line == "print") {
             printms(ai.view_grid());
-        } else if (line == "sure") {
-            int opened = ai.solve_certain();
-            std::cout << opened << " cells opened\n";            
-        } else if (line == "s") {
-            ms::rc_coord opened = ai.step_certain();
-            std::cout << "solver opening cell (" << opened.row << "," << opened.col << ")\n";
+        } else if (line == "solve") {
+            int opened = ai.solve();
+            std::cout << opened << " steps taken\n";            
+        } else if (line == "step") {
+            ms::rc_coord opened = ai.step();
+            if(opened != ms::rc_coord{0xffff,0xffff})
+                std::cout << "solver opened cell (" << opened.row << "," << opened.col << ")\n";
+            else
+                std::cout << "no cells opened\n";
         } else {
             int r, c;
             bool parse_fail = false;
@@ -129,8 +132,11 @@ int main() {
             }
 
             if(parse_fail) {
-                ms::rc_coord opened = ai.step();
-                std::cout << "solver opening cell (" << opened.row << "," << opened.col << ")\n";
+                ms::rc_coord opened = ai.step_certain();
+                if(opened != ms::rc_coord{0xffff,0xffff})
+                    std::cout << "solver opened cell (" << opened.row << "," << opened.col << ")\n";
+                else
+                    std::cout << "no cells opened\n";
             }
             if(!parse_fail) {
                 try {
@@ -146,20 +152,4 @@ int main() {
 
     return 0;
 }
-
-/*
-I don't know how it (correctly) determined the flag at (4,1).
-
- --------------------------
-|               F 1 0 0 0 0 |
-|   5     2     3 2 0 1 1 1 |
-|     2   F 2 3 F 4 2 2 F 1 |
-|     3 2 3 2 3 F F F 4 4 3 |
-|   F 3   2 F 2 2 3 4 F F F |
-|     3   3 3 4 2 1 2 F F 3 |
-|     2 1 2 F F F 1 1 2 2 1 |
-|   3 2   2 2 3 2 1 1 1 2 1 |
-|         1 0 0 0 0 1 F 2 F |
- --------------------------
- */
 

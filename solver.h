@@ -94,8 +94,6 @@ namespace ms {
 
 		int find_guarantees();
 		int cleanup();
-
-		
 	};
 
 
