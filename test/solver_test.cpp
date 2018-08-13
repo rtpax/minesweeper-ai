@@ -1,4 +1,2 @@
-#ifndef MS_TEST_SOLVER_TEST_H
-#define MS_TEST_SOLVER_TEST_H
-
-#endif
+#define CATCH_CONFIG_MAIN
+#include "solver_test.h"

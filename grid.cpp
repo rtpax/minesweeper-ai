@@ -178,7 +178,7 @@ namespace ms {
 	 * 
 	 * Toggles flag status none=>flagged=>question=>none.
 	 * 
-	 * Returns 0 on success, 1 on failure (out of bounds or not initialized or already opened).
+	 * Returns 0 on success, nonzero on failure (out of bounds or not initialized or already opened).
 	 * 
 	 **/
 	int grid::flag(unsigned int row, unsigned int col) {
