@@ -2,8 +2,9 @@
 #define MS_SOLVER_H
 
 #include <vector>
+#include <deque>
 #include <list>
-#include <assert.h>
+#include <cassert>
 #include "grid.h"
 #include "region.h"
 
@@ -52,13 +53,13 @@ namespace ms {
 		static std::mt19937 rng;
 
 		std::list<region> regions;
-		std::list<rc_coord> safe_queue;
-		std::list<rc_coord> bomb_queue;
-		std::list<std::list<region>::iterator> ** cell_keys;
+		std::deque<rc_coord> safe_queue;
+		std::deque<rc_coord> bomb_queue;
+		std::vector<std::list<region>::iterator> ** cell_keys;
 
 		int init_cell_keys();
 		std::list<region>::iterator remove_region(std::list<region>::iterator to_remove);
-		int add_region(const region& to_add);
+		std::list<region>::iterator add_region(const region& to_add);
 		int remove_safe_from_all_regions(rc_coord cell);
 		int remove_bomb_from_all_regions(rc_coord cell);
 

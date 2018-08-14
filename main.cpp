@@ -60,32 +60,6 @@ void printms(const ms::grid& g) {
     printf("  \n");
 }
 
-int notmain() {
-    ms::region a;
-    a.addcell(ms::rc_coord{1,2});
-    a.addcell(ms::rc_coord{3,4});
-    a.addcell(ms::rc_coord{5,6});
-    a.set_range(1,2);
-
-    ms::region b = a;
-
-	for(unsigned int i = 0; i < a.size(); ++i)
-		printf("(%d,%d)",a[i].row,a[i].col);
-    printf("\nmin: %d\nmax: %d\n",a.min(),a.max());    
-
-    for(unsigned int i = 0; i < b.size(); ++i)
-		printf("(%d,%d)",b[i].row,b[i].col);
-    printf("\nmin: %d\nmax: %d\n",b.min(),b.max());
-
-    printf("samearea1: %s\n",a.samearea(b) ? "true" : "false");
-    printf("samearea2: %s\n",b.samearea(a) ? "true" : "false");
-
-    printf("a == b: %s\n",a == b ? "true" : "false");    
-    printf("b == a: %s\n",b == a ? "true" : "false"); 
-
-    return 0;
-}
-
 int main() {
     ms::solver ai(9,10,20);
 

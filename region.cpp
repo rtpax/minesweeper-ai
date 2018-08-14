@@ -1,14 +1,9 @@
 ﻿#include "region.h"
-#include <stdio.h>
 #include <algorithm>
+#include "debug.h"
 
 namespace ms {
 
-#if DEBUG>1
-	#define debug_printf(...) printf(__VA_ARGS__)
-#else
-	#define debug_printf(...)
-#endif
 
 	/**
 	 *
@@ -17,15 +12,17 @@ namespace ms {
 	 * 
 	 * Return 1 if it adds the cell, 0 otherwise
 	 * 
-	 * Complexity \f$O(N)\f$
+	 * Complexity \f$O(log(N))\f$
 	 *
 	 **/
 	int region::addcell(rc_coord arg) {
-		for (unsigned int i = 0; i < size(); ++i)
-			if (_cells[i] == arg)
-				return 0;
-		_cells.push_back(arg);
-		return 1;
+		iterator it = _cells.lower_bound(arg); //user lower_bound instead of find, use `it` to speed up insertion
+		if(*it == arg) { 
+			return 0;
+		} else {
+			_cells.insert(it, arg); 
+			return 1;
+		}
 	}
 
 	/**
@@ -39,20 +36,13 @@ namespace ms {
 	 *
 	 * Complexity \f$\Theta (N^2)\f$
 	 * 
+	 * Note: this function no longer serves any purpose.
+	 * All regions should constantly be trim. This function returns zero;
+	 * 
 	 **/
 	int region::trim() {
-		size_t original_size = size();
-		for (int i = 0; i < (int)size() - 1; ++i) {
-			for (unsigned int j = i + 1; j < size();) {
-				if (_cells[i] == _cells[j]) {
-					_cells.erase(_cells.begin() + j);
-				}
-				else {
-					++j;
-				}
-			}
-		}
-		return original_size - size();
+		assert(is_trim());
+		return 0;
 	}
 
 	/**
@@ -66,9 +56,10 @@ namespace ms {
 	 * 
 	 **/
 	bool region::is_trim() const {
-		for (int i = 0; i < (int)size() - 1; ++i) {
-			for (unsigned int j = i + 1; j < size(); ++j) {
-				if (_cells[i] == _cells[j]) {
+		if(!_cells.empty())
+		for (iterator i = begin(); std::next(i,1) != end(); ++i) {
+			for (iterator j = std::next(i, 1); j != end(); ++j) {
+				if (*i == *j) {
 					return false;
 				}
 			}
@@ -83,7 +74,7 @@ namespace ms {
 	 * 
 	 * `arg` and `this` MUST be trim.
 	 * 
-	 * Complexity \f$O(N \cdot M)\f$
+	 * Complexity \f$O(N \cdot log(M))\f$
 	 *
 	 **/
 	region region::intersect(const region& arg) const {
@@ -91,12 +82,9 @@ namespace ms {
 		assert(arg.is_trim() && "intersect");
 
 		region ret;
-		for (unsigned int i = 0; i < size(); ++i) {
-			for (unsigned int j = 0; j < arg.size(); ++j) {
-				if (_cells[i] == arg[j]) {
-					ret.forcecell(_cells[i]);
-					break;
-				}
+		for (iterator it = begin(); it != end(); ++it) {
+			if(arg.find(*it) != arg.end()) {
+				ret.addcell(*it);
 			}
 		}
 
@@ -163,7 +151,7 @@ namespace ms {
 	 * 
 	 * `this` and `arg` MUST be trim
 	 * 
-	 * Complexity \f$O(M \cdot (M + N))\f$ where M is the size of `arg` and N is the size of `this`.
+	 * Complexity \f$O(M \cdot log(M + N))\f$ where M is the size of `arg` and N is the size of `this`.
 	 * 
 	 **/
 	region region::unite(const region& arg) const {
@@ -171,12 +159,10 @@ namespace ms {
 		assert(arg.is_trim() && "unite");
 
 		region ret;
+		ret._cells = _cells;
 		int common = 0;
-		for (unsigned int i = 0; i < size(); ++i) {
-			ret.forcecell(_cells[i]);//no need for check repeats on adding to empty region
-		}
-		for (unsigned int i = 0; i < arg.size(); ++i) {
-			if (!ret.addcell(arg[i]))
+		for (iterator it = arg.begin(); it != arg.end(); ++it) {
+			if (!ret.addcell(*it))
 				++common;
 		}
 
@@ -211,7 +197,7 @@ namespace ms {
 	 *
 	 * `this` and `arg` MUST be trim
 	 * 
-	 * Complexity \f$O(N^2)\f$
+	 * Complexity \f$O(M \cdot log(M + N))\f$ where M is the size of `arg` and N is the size of `this`.
 	 * 
 	 **/
 	region region::subtract(const region& arg) const {
@@ -219,16 +205,10 @@ namespace ms {
 		assert(arg.is_trim() && "subtract");
 
 		region ret;
-		for (unsigned int i = 0; i < size(); ++i) {
-			bool inarg = 0;
-			for (unsigned int j = 0; j < arg.size(); ++j) {
-				if (arg[j] == _cells[i]) {
-					inarg = 1;
-					break;
-				}
-			}
-			if (!inarg)
-				ret.forcecell(_cells[i]);
+		ret._cells = _cells;
+
+		for (iterator it = arg.begin(); it != arg.end(); ++it) {
+			ret.remove_safe(*it);
 		}
 		int common = size() - ret.size();
 		int othersubsize = arg.size() - common;
@@ -265,11 +245,11 @@ namespace ms {
     /**
 	 *
 	 * If two regions cover the same area, creates one
-	 * cell that gives all the information of the two
+	 * region that gives all the information of the two
 	 * (`max` = the smaller max, `min` = the larger min).
 	 * Otherwise returns an empty region
 	 * 
-	 * Complexity \f$O(1)\f$ if they cannot merge, \f$O(N)\f$ if they can merge
+	 * Complexity \f$O(log(N))\f$ if they cannot merge, \f$O(N)\f$ if they can merge
 	 *
 	 **/
 	region region::merge(const region& arg) const {
@@ -290,14 +270,17 @@ namespace ms {
 	 * if bomb is not contained in the region, do nothing and return 1
 	 * if bomb is located in the region, but the region has no bombs (max of 0) return 2, but still remove
 	 * 
-	 * Complexity \f$O(N)\f$
+	 * Complexity \f$O(log(N))\f$
 	 * 
 	 **/
 	int region::remove_bomb(rc_coord bomb) {
-		for (unsigned int i = 0; i < size(); ++i) {
-			if (_cells[i] == bomb) {
-				_cells.erase(_cells.begin() + i);
-				
+		iterator i = _cells.find(bomb);
+		if(i == _cells.end()) {
+			return 1;
+		} else {
+			assert(*i == bomb);
+			_cells.erase(i);
+
 				if(_min != 0)
 					--_min;
 				if(_max != 0)
@@ -306,9 +289,7 @@ namespace ms {
 					return 2;
 
 				return 0;
-			}
 		}
-		return 1;
 	}
 
 	/**
@@ -318,65 +299,36 @@ namespace ms {
 	 * if safe is not contained in the region, do nothing and return 1
 	 * if safe is located in the region, but there are no safe spaces (min == size), remove the cell but return 2;
 	 * 
-	 * Complexity \f$O(N)\f$
+	 * Complexity \f$O(log(N))\f$
 	 *
 	 **/
 	int region::remove_safe(rc_coord safe) {
-		for (unsigned int i = 0; i < size(); ++i) {
-			if (_cells[i] == safe) {
-				_cells.erase(_cells.begin() + i);
+		iterator i = _cells.find(safe);
+		if(i == _cells.end()) {
+			return 1;
+		} else {
+			assert(*i == safe);
+			_cells.erase(i);
 
-				if(_max > size())
-					_max = size();
-				if(_min > _max) { //implies _min > size()
-					_min = _max;
-					return 2;
-				}
-				return 0;
+			if(_max > size())
+				_max = size();
+			if(_min > _max) { //implies _min > size()
+				_min = _max;
+				return 2;
 			}
+			return 0;
 		}
-		return 1;
-
 	}
 
 	/**
 	 * 
 	 * Returns true if the regions contain all of the same cells. 
-	 * Note that it does not check if both are trim, and will return 
-	 * true if one contains duplicates but are otherwise the same. 
 	 * 
-	 * Complexity \f$O(N^2)\f$.
+	 * Complexity \f$O(N)\f$.
 	 * 
 	 **/
 	bool region::samearea(const region& comp) const { 
-		std::vector<char> checkcomp(comp.size(), 0);
-		for(unsigned int i = 0; i < size(); ++i) {
-			bool hasj = 0;
-			for(unsigned int j = 0; j < comp.size(); ++j) {
-				if(_cells[i] == comp[j]) {
-					hasj = 1;
-					checkcomp[j] = 1;
-					break;
-				}
-			}
-			if(!hasj)
-				return 0;
-		}
-
-		for(unsigned int j = 0; j < comp.size(); ++j) {
-			if(!checkcomp[j]) {
-				bool hasi = 0;
-				for(unsigned int i = 0; i < size(); ++i) {
-					if(_cells[i] == comp[j]) {
-						hasi = 1;
-					}
-				}
-				if(!hasi)
-					return 0;
-			}
-		}
-
-		return 1;
+		return _cells == comp._cells;
 	}
 
 	/**
@@ -385,16 +337,13 @@ namespace ms {
 	 * faster than region::intersect, so if you actually intend to use the intersection
 	 * it is probably better to take it directly.
 	 * 
-	 * Complexit \f$O(N^2)\f$
+	 * Complexity \f$O(M \cdot log(N))\f$, where M is the size of `arg` and N is the size of `this`.
 	 * 
 	 **/
 	bool region::has_intersect(const region& arg) const {
-		for (unsigned int i = 0; i < size(); ++i) {
-			for (unsigned int j = 0; j < arg.size(); ++j) {
-				if (_cells[i] == arg[j]) {
-					return 1;
-				}
-			}
+		for (iterator it = arg.begin(); it != arg.end(); ++it) {
+			if(find(*it) != end())
+				return 1;
 		}
 
 		return 0;

@@ -16,7 +16,7 @@ MODULES=$(SRCS:.cpp=)
 OBJS=$(SRCS:.cpp=.o)
 
 debug_DEP=
-test_DEP=test/test.h
+test_DEP=
 
 solver_DEP=solver.h $(grid_DEP) $(region_DEP) $(test_DEP)
 region_DEP=region.h $(test_DEP)

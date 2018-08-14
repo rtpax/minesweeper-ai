@@ -2,24 +2,37 @@
 #define MS_REGION_H
 
 #include <vector>
-#include <assert.h>
-#include <stddef.h>
+#include <cassert>
+#include <cstddef>
+#include <set>
 
 namespace ms {
 
+	/**stores the row and column for a cell an provides some basic comparison functionality**/
 	struct rc_coord {
 		unsigned int row, col;
 
+		/**default constructor. zero initializes elements.**/
 		rc_coord() { row = 0; col = 0; }
+		/**equivalent to `rc_coord{r,c}`**/
 		rc_coord(unsigned int r, unsigned int c) { row = r; col = c; }
+		/**copy constructor**/
 		rc_coord(const rc_coord& copy) { row = copy.row; col = copy.col; }
+		/**iff both members compare equal return true**/
 		bool operator==(rc_coord comp) const { return row == comp.row && col == comp.col; }
+		/**iff either member compares unequal return false**/
 		bool operator!=(rc_coord comp) const { return row != comp.row || col != comp.col; }
+		/**treat row as the high order bits for comparison. supplied only for use with `std::set`.**/
+		bool operator<(rc_coord comp) const {
+			if(row != comp.row)
+				return row < comp.row;
+			return col < comp.col;
+		}
 	};
 
 	struct region {
 	private:
-		std::vector<rc_coord> _cells;
+		std::set<rc_coord> _cells;
 		unsigned int _max, _min;
 	public:
 		/**The maximum number of bombs that could possibly be in the region.\n Complexity \f$O(1)\f$**/
@@ -77,25 +90,25 @@ namespace ms {
 		bool samearea(const region& comp) const;
 		bool has_intersect(const region& arg) const;
 		int addcell(rc_coord rc);
-		/**Adds a cell to a region. Does not check for duplicates. The resulting region is not guaranteed to be trim.\n Complexity \f$O(1)\f$**/
-		int forcecell(rc_coord rc) { _cells.push_back(rc); return 1; }
 		int remove_bomb(rc_coord bomb);
 		int remove_safe(rc_coord safe);
 		int trim();
 		bool is_trim() const;
+		/** returns true if the combination of max and min is possible with the current size**/
 		bool is_reasonable() const { return min() <= max() && max() <= size(); }
 		/**Returns the number of cells in the region.\n Complexity \f$O(1)\f$.**/
 		size_t size() const { return _cells.size(); }
 		/**Returns true if the region has no cells, false otherwise.\n Complexity \f$O(1)\f$.**/
 		bool empty() const { return _cells.empty(); }
-		/**Accesses the element at the specified index.\n Complexity \f$O(1)\f$.**/
-		rc_coord& operator[](int index) { return _cells[index]; }
-		/**Accesses the element at the specified index. The reference returned by this is const, for the nonconst version see region::operator[].\n Complexity \f$O(1)\f$.**/
-		const rc_coord& operator[](int index) const { return _cells[index]; }
-		std::vector<rc_coord>::iterator begin() { return _cells.begin(); }
-		std::vector<rc_coord>::iterator end() { return _cells.end(); }
-		std::vector<rc_coord>::const_iterator begin() const { return _cells.begin(); }
-		std::vector<rc_coord>::const_iterator end() const { return _cells.end(); }
+
+		typedef std::set<rc_coord>::iterator iterator;
+		typedef std::set<rc_coord>::const_iterator const_iterator;
+		iterator begin() { return _cells.begin(); }
+		iterator end() { return _cells.end(); }
+		const_iterator begin() const { return _cells.cbegin(); }
+		const_iterator end() const { return _cells.cend(); }
+		iterator find(const rc_coord& rc) { return _cells.find(rc); }
+		const_iterator find(const rc_coord& rc) const { return _cells.find(rc); }
 
 #ifdef DEBUG
 		#define assert_trim(arg) do{ region test = (arg); test.trim(); assert(test == (arg)); }while(0)
