@@ -6,14 +6,12 @@ namespace ms {
 
 
 	/**
-	 *
 	 * Adds a cell to a region if it is not contained already
 	 * The resulting region is guaranteed to be trim if it was before addcell was called.
 	 * 
 	 * Return 1 if it adds the cell, 0 otherwise
 	 * 
 	 * Complexity \f$O(log(N))\f$
-	 *
 	 **/
 	int region::addcell(rc_coord arg) {
 		iterator it = _cells.lower_bound(arg); //user lower_bound instead of find, use `it` to speed up insertion
@@ -26,7 +24,6 @@ namespace ms {
 	}
 
 	/**
-	 *
 	 * Removes all repeated cells in a region.
 	 * 
 	 * A cell is guaranteed to be trim after calling trim.
@@ -38,7 +35,6 @@ namespace ms {
 	 * 
 	 * Note: this function no longer serves any purpose.
 	 * All regions should constantly be trim. This function returns zero;
-	 * 
 	 **/
 	int region::trim() {
 		assert(is_trim());
@@ -46,14 +42,12 @@ namespace ms {
 	}
 
 	/**
-	 * 
 	 * Tests whether the region is trim.
 	 * A cell is trim if it has no repeated cells in a region.
 	 * 
 	 * Returns true if the region is trim, false otherwise.
 	 * 
 	 * Complexity \f$O(N^2)\f$
-	 * 
 	 **/
 	bool region::is_trim() const {
 		if(!_cells.empty())
@@ -68,14 +62,12 @@ namespace ms {
 	}
 
 	/**
-	 * 
 	 * Returns a region with all shared points (mathematical intersection: `this` &cap; `arg`).
 	 * Guaranteed to return a trim region.
 	 * 
 	 * `arg` and `this` MUST be trim.
 	 * 
 	 * Complexity \f$O(N \cdot log(M))\f$
-	 *
 	 **/
 	region region::intersect(const region& arg) const {
 		assert(is_trim() && "intersect");
@@ -144,7 +136,6 @@ namespace ms {
 	 *
 	 */
 	/**
-	 *
 	 * Returns a region with all points in either region (mathematical union: `this` &cup; `arg`).
 	 * Calculates what the union's `max` and `min` number of bombs is. 
 	 * Guaranteed to return a trim region.
@@ -152,7 +143,6 @@ namespace ms {
 	 * `this` and `arg` MUST be trim
 	 * 
 	 * Complexity \f$O(M \cdot log(M + N))\f$ where M is the size of `arg` and N is the size of `this`.
-	 * 
 	 **/
 	region region::unite(const region& arg) const {
 		assert(is_trim() && "unite");
@@ -190,7 +180,6 @@ namespace ms {
 	}
 
 	/**
-	 *
 	 * Returns a region with all points in the calling region that
 	 * are not in the argument region (mathematical compliment : `this`\\`arg`).
 	 * Guaranteed to return a trim region
@@ -198,7 +187,6 @@ namespace ms {
 	 * `this` and `arg` MUST be trim
 	 * 
 	 * Complexity \f$O(M \cdot log(M + N))\f$ where M is the size of `arg` and N is the size of `this`.
-	 * 
 	 **/
 	region region::subtract(const region& arg) const {
 		assert(is_trim() && "subtract");
@@ -243,14 +231,12 @@ namespace ms {
 	}
 
     /**
-	 *
 	 * If two regions cover the same area, creates one
 	 * region that gives all the information of the two
 	 * (`max` = the smaller max, `min` = the larger min).
 	 * Otherwise returns an empty region
 	 * 
 	 * Complexity \f$O(log(N))\f$ if they cannot merge, \f$O(N)\f$ if they can merge
-	 *
 	 **/
 	region region::merge(const region& arg) const {
 		region ret;
@@ -264,14 +250,29 @@ namespace ms {
 	}
 
 	/**
-	 *
+	 * Merges a region with another region that covers the same area
+	 * 
+	 * Complexity \f$O(1)\f$
+	 * 
+	 * \warning The result of this function is undefined if `this->samearea(arg)` is false 
+	 **/
+	region& region::merge_to(const region& arg) {
+		assert(!samearea(arg));
+		if(_max > arg._max)
+			_max = arg.max();
+		if(_min < arg._min)
+			_min = arg.min();
+		assert(is_reasonable());
+		return *this;
+	}
+
+	/**
 	 * removes a cell at the specified location treating it as a bomb:
 	 * decreases min and max by 1, removes from the region, and returns 0
 	 * if bomb is not contained in the region, do nothing and return 1
 	 * if bomb is located in the region, but the region has no bombs (max of 0) return 2, but still remove
 	 * 
 	 * Complexity \f$O(log(N))\f$
-	 * 
 	 **/
 	int region::remove_bomb(rc_coord bomb) {
 		iterator i = _cells.find(bomb);
@@ -293,14 +294,12 @@ namespace ms {
 	}
 
 	/**
-	 *
 	 * removes a cell at the specified location treating it as a non bomb
 	 * removes from _cells, and returns 0
 	 * if safe is not contained in the region, do nothing and return 1
 	 * if safe is located in the region, but there are no safe spaces (min == size), remove the cell but return 2;
 	 * 
 	 * Complexity \f$O(log(N))\f$
-	 *
 	 **/
 	int region::remove_safe(rc_coord safe) {
 		iterator i = _cells.find(safe);
@@ -321,24 +320,20 @@ namespace ms {
 	}
 
 	/**
-	 * 
 	 * Returns true if the regions contain all of the same cells. 
 	 * 
 	 * Complexity \f$O(N)\f$.
-	 * 
 	 **/
 	bool region::samearea(const region& comp) const { 
 		return _cells == comp._cells;
 	}
 
 	/**
-	 * 
 	 * Returns true if the intersection of two regions is nonzero in size. Not much 
 	 * faster than region::intersect, so if you actually intend to use the intersection
 	 * it is probably better to take it directly.
 	 * 
 	 * Complexity \f$O(M \cdot log(N))\f$, where M is the size of `arg` and N is the size of `this`.
-	 * 
 	 **/
 	bool region::has_intersect(const region& arg) const {
 		for (iterator it = arg.begin(); it != arg.end(); ++it) {
@@ -347,6 +342,15 @@ namespace ms {
 		}
 
 		return 0;
+	}
+
+	/**
+	 * Checks if the cell gives any useful information about the number of bombs.
+	 * 
+	 * Returns false if min/max can be inferred from size, true if they cannot
+	 **/
+	bool region::is_helpful() const {
+		return !(size() == max() && min() == 0);//size == 0 evaluates to false for valid regions
 	}
 
 

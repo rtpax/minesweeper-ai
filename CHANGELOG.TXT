@@ -1,0 +1,32 @@
+
+~ removed operator overloads for intersect/unite/subtract/merge in ms::region
+
+~ changed solver::regions implementation to std::set
+    changed most solver functions to account for this
+    added (protected) typedefs for region and key iterator types
+    updated complexities
+
+~ changed comment style to remove spacing before and after: eg
+
+        /**
+         *
+         * my comment content
+         *
+         **/
+
+        becomes
+
+        /**
+         * my comment content
+         **/
+
+~ got rid of ms::util::region_is_helpful and replaced with ms::region::is_helpful
+~ got rid of unnecessary conglomerate stuff
+~ moved debug printing to debug.h
+~ added LICENSE
+~ updated description in README.TXT
+~ added TODO.TXT to keep track of bugs to fix and features to add
+~ added CHANGELOG.TXT //meta
+~ added typedefs in solver for common iterators
+~ make key_type std::set
+~ pulled rc_coord into its own file

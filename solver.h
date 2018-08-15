@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <deque>
+#include <set>
 #include <list>
 #include <cassert>
 #include "grid.h"
@@ -18,16 +19,11 @@ namespace ms {
 	class spinoff;
 
 	/**
-	 * 
 	 * The `solver` class is used to solve minesweeper games.
 	 * 
 	 * It can use a grid of any size, and can either use a pre-made grid or generate one itself.
 	 * 
-	 * It may be used in tandem with user controls
-	 * 
-	 * 
-	 * 
-	 * 
+	 * AI may be used in tandem with user controls
 	 **/
 	class solver {
 	public:
@@ -52,14 +48,24 @@ namespace ms {
 	protected:
 		static std::mt19937 rng;
 
-		std::list<region> regions;
+		std::set<region> regions;
 		std::deque<rc_coord> safe_queue;
 		std::deque<rc_coord> bomb_queue;
-		std::vector<std::list<region>::iterator> ** cell_keys;
+
+		typedef std::set<region>::iterator regions_iter;
+
+		struct key_less {
+			bool operator()(regions_iter it1, regions_iter it2) { return *it1 < *it2; }
+		};
+
+		typedef std::set<regions_iter, key_less> key_type;
+		typedef key_type::iterator key_iter;
+
+		key_type ** cell_keys;
 
 		int init_cell_keys();
-		std::list<region>::iterator remove_region(std::list<region>::iterator to_remove);
-		std::list<region>::iterator add_region(const region& to_add);
+		regions_iter remove_region(regions_iter to_remove);
+		regions_iter add_region(const region& to_add);
 		int remove_safe_from_all_regions(rc_coord cell);
 		int remove_bomb_from_all_regions(rc_coord cell);
 
@@ -84,16 +90,6 @@ namespace ms {
 		int add_to_safe_queue(rc_coord to_add);
 		int add_to_bomb_queue(rc_coord to_add);
 
-		std::vector<std::vector<region>> chains;
-
-		std::list<region> congolomerates;
-		int find_conglomerate();
-		int add_conglomerate(const region& to_add);
-		int add_solo_regions();
-		std::vector<region> find_best_starting_points();
-		int work_from_starting_point(region& conglomerate, const region& start);
-
-		int find_guarantees();
 		int cleanup();
 	};
 

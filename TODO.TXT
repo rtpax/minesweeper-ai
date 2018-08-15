@@ -1,0 +1,37 @@
+
+FEATURES
+
+PRIORITY: HIGH
+~   determine stl container for solver::key_type. if std::set, must change region min
+    and max to mutable. Kinda hacky, but well defined and much simpler than alternatives
+    I can think of (except using vector,map, etc.)
+
+PRIORITY: MEDIUM
+~   add autodepency to make files (and get rid of my ad hoc header dependency method)
+~   when running make, create release, debug, and tests all in one go.
+~   decide how much of the license text to add to each file and do that
+~   increase speed! bottleneck is in lazy_aux_regions, was only so slow after adding the
+    "remaining" region in solver::find_base_regions. I want that info though, so focus
+    on other optimizations
+~   create algorithm for determining how likely a given cell is to a bomb
+~   create algorithm for determining how much payout a given cell is likely to have
+~   create algorithm for combining those two likelyhoods to make decisions
+~   carry over likelyhood data to next iteration or make it really fast to calculate
+
+PRIORITY: LOW
+~   use computer vision software to play on an actual minesweeper board
+
+BUGS
+
+PRIORITY: HIGH
+~   find SEGFAULT source (all i know is something to do with the std::set in region, 
+    I think upon attempting to copy a bad one)
+~   find floating point exception source (divide by zero). Sometimes happens as late
+    as after printing the complete board, often earlier
+
+PRIORITY: LOW
+~   Program can freeze computer by consuming too much memory on large boards/overly
+    hungry algorithms. Prefer to give up early instead of this
+
+
+

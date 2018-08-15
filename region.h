@@ -5,30 +5,12 @@
 #include <cassert>
 #include <cstddef>
 #include <set>
+#include "rc_coord.h"
+#include "debug.h"
 
 namespace ms {
 
-	/**stores the row and column for a cell an provides some basic comparison functionality**/
-	struct rc_coord {
-		unsigned int row, col;
 
-		/**default constructor. zero initializes elements.**/
-		rc_coord() { row = 0; col = 0; }
-		/**equivalent to `rc_coord{r,c}`**/
-		rc_coord(unsigned int r, unsigned int c) { row = r; col = c; }
-		/**copy constructor**/
-		rc_coord(const rc_coord& copy) { row = copy.row; col = copy.col; }
-		/**iff both members compare equal return true**/
-		bool operator==(rc_coord comp) const { return row == comp.row && col == comp.col; }
-		/**iff either member compares unequal return false**/
-		bool operator!=(rc_coord comp) const { return row != comp.row || col != comp.col; }
-		/**treat row as the high order bits for comparison. supplied only for use with `std::set`.**/
-		bool operator<(rc_coord comp) const {
-			if(row != comp.row)
-				return row < comp.row;
-			return col < comp.col;
-		}
-	};
 
 	struct region {
 	private:
@@ -53,29 +35,7 @@ namespace ms {
 		region unite(const region& arg) const;
 		region subtract(const region& arg) const;
 		region merge(const region& arg) const;
-
-		/**Equivalent to region::union**/
-		region operator|(const region& arg) const { return unite(arg); }
-		/**Equivalent to region::subtract**/
-		region operator/(const region& arg) const { return subtract(arg); }
-		/**Equivalent to region::intersect**/
-		region operator&(const region& arg) const { return intersect(arg); }
-		/**Equivalent to region::merge**/
-		region operator<<(const region& arg) const { return merge(arg); }
-
-		/**`A |= B` is equivalent to `A = A | B`. See region::operator| **/
-		const region& operator|=(const region& arg) { return *this = unite(arg); }
-		/**`A /= B` is equivalent to `A = A / B`. See region::operator/ **/
-		const region& operator/=(const region& arg) { return *this = subtract(arg); }
-		/**`A &= B` is equivalent to `A = A & B`. See region::operator & **/
-		const region& operator&=(const region& arg) { return *this = intersect(arg); }
-		/**`A <<= B` is equivalent to `A = A << B`. See region::operator<< **/
-		const region& operator<<=(const region& arg) { 
-#ifdef DEBUG
-			assert(!samearea(arg));
-#endif
-			return *this = merge(arg);
-		}
+		region& merge_to(const region& arg);
 
 		/**
 		 * Returns true if the cells are the same area and have the same `min` and `max`, false otherwise. 
@@ -86,6 +46,20 @@ namespace ms {
 		bool operator==(const region& comp) const { return samearea(comp) && _min == comp._min && _max == comp._max; }
 		/**Returns the opposite of `region::operator==`.**/
 		bool operator!=(const region& comp) const { return !(*this == comp); }
+		int compare_cells(const region& comp) const {
+			return !(*this == comp);
+		}
+		/**
+		 * lexicographically compare cells, supplied only for use with std::set
+		 * 
+		 * \note only cells are compared, not min or max. thus, if `a.samearea(b)` then 
+		 * `!(a < b || b < a)` and they are equivalent in a set. this is a desirable characteristic
+		 * because it allows easy searching, but must be careful when adding to a set that you don't
+		 * "lose" your region
+		 **/
+		bool operator<(const region& comp) const {
+			return _cells < comp._cells;
+		}
 
 		bool samearea(const region& comp) const;
 		bool has_intersect(const region& arg) const;
@@ -97,6 +71,7 @@ namespace ms {
 		/** returns true if the combination of max and min is possible with the current size**/
 		bool is_reasonable() const { return min() <= max() && max() <= size(); }
 		/**Returns the number of cells in the region.\n Complexity \f$O(1)\f$.**/
+		bool is_helpful() const;
 		size_t size() const { return _cells.size(); }
 		/**Returns true if the region has no cells, false otherwise.\n Complexity \f$O(1)\f$.**/
 		bool empty() const { return _cells.empty(); }
@@ -120,6 +95,20 @@ namespace ms {
 		#define assert_nonempty(arg)
 #endif
 	};
+
+	/**Print information about rc_coord iff `debug_print`ing is enabled**/
+	inline void debug_print_rc_coord(const rc_coord& arg) {
+		debug_printf("(%u,%u)",arg.row,arg.col);
+	}
+
+	/**Print information about region iff `debug_print`ing is enabled**/
+	inline void debug_print_region(const region& arg) {
+		debug_printf("{[%zu:%u,%u]",arg.size(),arg.min(),arg.max());
+		for(rc_coord rc : arg) {
+			debug_print_rc_coord(rc);
+		}
+		debug_printf("}");
+	}
 }
 
 
