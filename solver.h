@@ -65,7 +65,7 @@ namespace ms {
 
 		int init_cell_keys();
 		regions_iter remove_region(regions_iter to_remove);
-		regions_iter add_region(const region& to_add);
+		std::pair<regions_iter, bool> add_region(const region& to_add);
 		int remove_safe_from_all_regions(rc_coord cell);
 		int remove_bomb_from_all_regions(rc_coord cell);
 
@@ -80,8 +80,7 @@ namespace ms {
 
 		int find_regions();
 		int find_base_regions();
-		int find_aux_regions();
-		int lazy_aux_regions();
+		int find_aux_regions(bool lazy);
 		int find_ext_aux_regions();
 		int find_chains();
 		int find_leftover();

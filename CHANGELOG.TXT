@@ -1,32 +1,7 @@
-
-~ removed operator overloads for intersect/unite/subtract/merge in ms::region
-
-~ changed solver::regions implementation to std::set
-    changed most solver functions to account for this
-    added (protected) typedefs for region and key iterator types
-    updated complexities
-
-~ changed comment style to remove spacing before and after: eg
-
-        /**
-         *
-         * my comment content
-         *
-         **/
-
-        becomes
-
-        /**
-         * my comment content
-         **/
-
-~ got rid of ms::util::region_is_helpful and replaced with ms::region::is_helpful
-~ got rid of unnecessary conglomerate stuff
-~ moved debug printing to debug.h
-~ added LICENSE
-~ updated description in README.TXT
-~ added TODO.TXT to keep track of bugs to fix and features to add
-~ added CHANGELOG.TXT //meta
-~ added typedefs in solver for common iterators
-~ make key_type std::set
-~ pulled rc_coord into its own file
+~ Fixed bug in solver::trim_regions (infinite loop)
+~ Added check for past-the-end iterator in solver::add_region
+~ added region::order_preserve_merge_to for const modification (made min/max mutable)
+~ modified remove_safe/bomb_from_all_regions to work with set
+~ changed add_region to return a pair with bool as second to indicate if anything changed
+~ combined find_aux_region and lazy_aux_region with bool input to differentiate (only 1 line difference between the two)
+~ fixed bug in *_aux_regions where all regions were tested each time, not just recently modified

@@ -2,9 +2,6 @@
 FEATURES
 
 PRIORITY: HIGH
-~   determine stl container for solver::key_type. if std::set, must change region min
-    and max to mutable. Kinda hacky, but well defined and much simpler than alternatives
-    I can think of (except using vector,map, etc.)
 
 PRIORITY: MEDIUM
 ~   add autodepency to make files (and get rid of my ad hoc header dependency method)
@@ -13,6 +10,8 @@ PRIORITY: MEDIUM
 ~   increase speed! bottleneck is in lazy_aux_regions, was only so slow after adding the
     "remaining" region in solver::find_base_regions. I want that info though, so focus
     on other optimizations
+~   along the speed vein... create a recently modified region set so that each time
+    find_aux_regions is started we don't have to check everything
 ~   create algorithm for determining how likely a given cell is to a bomb
 ~   create algorithm for determining how much payout a given cell is likely to have
 ~   create algorithm for combining those two likelyhoods to make decisions

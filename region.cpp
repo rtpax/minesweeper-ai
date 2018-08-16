@@ -257,13 +257,32 @@ namespace ms {
 	 * \warning The result of this function is undefined if `this->samearea(arg)` is false 
 	 **/
 	region& region::merge_to(const region& arg) {
-		assert(!samearea(arg));
+		assert(samearea(arg));
 		if(_max > arg._max)
 			_max = arg.max();
 		if(_min < arg._min)
 			_min = arg.min();
 		assert(is_reasonable());
 		return *this;
+	}
+
+	/**
+	 * Merges a region with another region that covers the same area. This function is guaranteed
+	 * to not change the ordering of this compared to other regions.
+	 * 
+	 * Complexity \f$O(1)\f$
+	 * 
+	 * \note Despite the const qualifier (in place for std::set), this functions may change the values of min and max
+	 * 
+	 * \warning The result of this function is undefined if `this->samearea(arg)` is false 
+	 **/
+	void region::order_preserve_merge_to(const region& arg) const {
+		assert(samearea(arg));
+		if(_max > arg._max)
+			_max = arg._max;
+		if(_min < arg._min)
+			_min = arg._min;
+		assert(is_reasonable());
 	}
 
 	/**

@@ -79,8 +79,7 @@ namespace ms {
 				grid::cell gotten = g.get(r,c);
 				if(gotten == grid::ms_flag) {
 					remaining.remove_bomb(rc_coord(r,c));
-				}
-				else if(gotten <= 8 && gotten >= 0) {
+				} else if(gotten <= 8 && gotten >= 0) {
 					remaining.remove_safe(rc_coord(r,c));
 					region reg;
 					int num_flags = 0;
@@ -115,60 +114,6 @@ namespace ms {
 		return 0;
 	}
 
-	/**
-	 * Find all regions that can be deduced from the existing regions.
-	 * 
-	 * Calculate the intersection of each pair of regions
-	 *   - if empty, discard it
-	 *   - if nonempty, add the intersection and subraction to `this.aux_regions`
-	 * 
-	 * Returns the number of regions added (note that it does not include modified regions, only added)
-	 * 
-	 * Complexity of the inner loop \f$\O(N^2)\f$.
-	 * Outer loop's complexity is nontrivial, runs until it cannot make any more aux regions.
-	 **/
-	int solver::find_aux_regions() {
-		debug_printf("find_aux_regions...");
-		trim_regions();
-		int size = regions.size();
-
-
-		for (bool made_change = 1; made_change;) { //loops as long as something was added
-			made_change = 0;
-			std::vector<region> region_queue;
-
-			for(regions_iter ri = regions.begin(); ri != regions.end(); ++ri) {
-				key_type overlaps;
-				for(rc_coord cell : *ri) {
-					for(regions_iter over : cell_keys[cell.row][cell.col]) {
-						key_iter it = overlaps.find(over);
-						if(it == overlaps.end()) {
-							overlaps.insert(over);
-						}
-					}
-				}
-				for(key_iter rj = overlaps.begin(); rj != overlaps.end(); ++rj) {
-					if(*rj == ri)
-						continue;
-					region_queue.push_back(ri->intersect(**rj));
-					region_queue.push_back(ri->subtract(**rj));
-					region_queue.push_back((*rj)->subtract(*ri));
-				}
-			}
-
-			for(region& to_add : region_queue) {
-				if(add_region(to_add) != regions.end()) {
-					made_change = 1;
-				}
-			}
-
-		}
-		assert_each_trim();
-		assert_norepeat();
-
-		debug_printf("done\n");
-		return regions.size() - size;
-	}
 
 	/**
 	 * Find all regions that can be deduced from the existing regions.
@@ -179,36 +124,36 @@ namespace ms {
 	 * 
 	 * Returns the number of regions added (note that it does not include modified regions, only added)
 	 * 
-	 * Unlike `solver::find_aux_regions` it stops as soon as a cells can be added to the queue
+	 * If `lazy == true` it stops as soon as a cells can be added to the queue
 	 * 
 	 * Complexity of the inner loop \f$\O(N^2)\f$..
 	 * Outer loop's complexity is nontrivial, runs until it has found aux regions (often just one iteration).
 	 **/
-	int solver::lazy_aux_regions() {
-		debug_printf("lazy_aux_regions...");
+	int solver::find_aux_regions(bool lazy) {
+		debug_printf("find_aux_regions [%s]...", lazy?"lazy":"nonlazy");
 		trim_regions();
 		int size = regions.size();
 
-		using clock = std::chrono::high_resolution_clock;
-		clock::duration accum1 = std::chrono::seconds(0), accum2 = std::chrono::seconds(0);
+		// using clock = std::chrono::high_resolution_clock;
+		// clock::duration accum1 = std::chrono::seconds(0), accum2 = std::chrono::seconds(0);
 
 		std::vector<regions_iter> regions_added;
 		for(regions_iter ri = regions.begin(); ri != regions.end(); ++ri)
 			regions_added.push_back(ri);
 
 		while (!regions_added.empty()) { //loops as long as something was added
-			// std::cout << "[" << regions_added.size() << "/" << regions.size() << "]";
-			// std::cout.flush();
-			if(fill_queue())
+			std::cout << "[" << regions_added.size() << "/" << regions.size() << "]";
+			std::cout.flush();
+			if(lazy && fill_queue())
 				break;
 
 			std::vector<region> region_queue;
-			for(regions_iter ri = regions.begin(); ri != regions.end(); ++ri) {
-				// std::cout << ".";
-				// std::cout.flush();
+			for(std::vector<regions_iter>::iterator ri = regions_added.begin(); ri != regions_added.end(); ++ri) {
+				std::cout << ".";
+				std::cout.flush();
 				key_type overlaps;
-				clock::time_point A = clock::now();
-				for(rc_coord cell : *ri) {
+				// clock::time_point A = clock::now();
+				for(rc_coord cell : **ri) {
 					for(regions_iter over : cell_keys[cell.row][cell.col]) {
 						key_iter it = overlaps.find(over);
 						if(it == overlaps.end()) {
@@ -216,28 +161,28 @@ namespace ms {
 						}
 					}
 				}
-				clock::time_point B = clock::now();
+				// clock::time_point B = clock::now();
 				for(key_iter rj = overlaps.begin(); rj != overlaps.end(); ++rj) {
-					if(*rj == ri)
+					if(*rj == *ri)
 						continue;
-					region_queue.push_back(ri->intersect(**rj));
-					region_queue.push_back(ri->subtract(**rj));
-					region_queue.push_back((*rj)->subtract(*ri));
+					region_queue.push_back((*ri)->intersect(**rj));
+					region_queue.push_back((*ri)->subtract(**rj));
+					region_queue.push_back((*rj)->subtract(**ri));
 				}
-				clock::time_point C = clock::now();
-				accum1 += B - A;
-				accum2 += C - B;
-				std::cout << "[" << accum1.count() << ":" << accum2.count() << "]\n";
+				// clock::time_point C = clock::now();
+				// accum1 += B - A;
+				// accum2 += C - B;
+				// std::cout << "[" << accum1.count() << ":" << accum2.count() << "]\n";
 			}
-			// std::cout << "*";
-			// std::cout.flush();
+			std::cout << "*";
+			std::cout.flush();
 			regions_added.clear();
 			for(region& to_add : region_queue) {
-				regions_iter added = add_region(to_add);
-				if(added != regions.end()) {
+				auto add_info = add_region(to_add);
+				if(add_info.second) {
 					//this check might take more time than it's worth
-					if(std::find(regions_added.begin(), regions_added.end(), added) == regions_added.end())
-						regions_added.push_back(added);
+					if(std::find(regions_added.begin(), regions_added.end(), add_info.first) == regions_added.end())
+						regions_added.push_back(add_info.first);
 				}
 			}
 
@@ -264,6 +209,8 @@ namespace ms {
 			if(!ri->is_helpful()) {
 				ri = remove_region(ri);
 				++removed;
+			} else {
+				++ri;
 			}
 		}
 
@@ -278,32 +225,35 @@ namespace ms {
 	 *
 	 * Complexity \f$O(N)\f$
 	 **/
-	solver::regions_iter solver::add_region(const region& to_add) {
+	std::pair<solver::regions_iter, bool> solver::add_region(const region& to_add) {
+		typedef std::pair<solver::regions_iter, bool> ret_type;
 		debug_printf("adding region ");
 		debug_print_region(to_add);
 		debug_printf("...\n");
 		if(!to_add.is_helpful()) {
 			debug_printf("skipping because unhelpful\n");
-			return regions.end();
+			return ret_type(regions.end(), false);
 		}
 
 		regions_iter added;
+		bool did_add = false;
 		regions_iter similar = regions.lower_bound(to_add);
-		if(similar->samearea(to_add)) {
-			debug_printf("merging region: ");
-			similar->merge_to(to_add);
-			added = similar;
-		} else {
-			added = regions.insert(similar, to_add);
+		if(similar == regions.end() || !similar->samearea(to_add)) {
+			auto added_info = regions.insert(to_add);
+			assert(added_info.second);
+			added = added_info.first;
+			did_add = true;
 			for(rc_coord cell : to_add) {
-				key_iter add_loc = cell_keys[cell.row][cell.col].lower_bound(added);
-				assert(!added->samearea(add_loc));
-				cell_keys[cell.row][cell.col].insert(add_loc, added);
+				cell_keys[cell.row][cell.col].insert(added);
 			}
+		} else {
+			did_add = similar->min() < to_add.min() || similar->max() > to_add.max();
+			similar->order_preserve_merge_to(to_add);
+			added = similar;
 		}
 
 		debug_printf("region added\n");
-		return added;
+		return ret_type(added, did_add);
 	}
 
 	/**
@@ -329,7 +279,7 @@ namespace ms {
 	int solver::find_regions() {
 		trim_regions();
 		find_base_regions();
-		lazy_aux_regions();
+		find_aux_regions(true);
 		if(!(safe_queue.empty() && bomb_queue.empty()))
 			return 0;
 
@@ -341,25 +291,27 @@ namespace ms {
 
 
 	/**
-	 * to be called when a safe cell is opened
-	 * removes it from all regions, so it can be forgotten about and free up memory
-	 * skips regions that do not have the cell
-	 * throws an error if a region has the cell, but removal is impossible (has no safe)
+	 * To be called when a safe cell is opened.
+	 * Removes `cell` from all regions, so it can be forgotten about and free up memory and 
+	 * simplify future calculations. Guaranteed to not create any un-trim regions
 	 * 
-	 * all empty cells are removed
-	 * 
-	 * returns nonzero if the safe cell is found, otherwise returns 0
+	 * returns nonzero if the safe cell is found, otherwise returns 0.
 	 **/
 	int solver::remove_safe_from_all_regions(rc_coord cell) {
 		key_type& key = cell_keys[cell.row][cell.col];
 		int found = 0;
 
 		while(!key.empty()) {
-			int err = (*key.end())->remove_safe(cell);
-			(void)err; //suppress unused warnings
+			key_iter removing = key.begin();
+			region unsafe = **removing;
+			int err = unsafe.remove_safe(cell);
 			assert(err != 2 && "Attempted to remove safe from region with no safe spaces");
-			key.erase(key.end());
+			size_t old_size = key.size();
+			remove_region(*removing); //should remove "removing" from key
+			assert(old_size > key.size());
+			add_region(unsafe);
 			++found;
+			(void) err, (void) old_size; //suppress unused warnings
 		}
 
 		for(std::deque<rc_coord>::iterator ri = bomb_queue.begin(); ri != bomb_queue.end();) {
@@ -391,25 +343,23 @@ namespace ms {
 	 * returns nonzero if the bomb cell is found, otherwise returns 0
 	 **/
 	int solver::remove_bomb_from_all_regions(rc_coord cell) {
-		debug_printf("removing bomb from cell ");
-		debug_print_rc_coord(cell);
-		debug_printf("...\n");
-
 		key_type& key = cell_keys[cell.row][cell.col];
 		int found = 0;
 
 		while(!key.empty()) {
-			debug_printf("removing bomb from region ");
-			debug_print_region(**key.end());
-			int err = (*key.end())->remove_bomb(cell);
-			(void) err; //suppresss unused warnings
-			debug_printf("\nresulting region ");
-			debug_print_region(**key.end());
-			debug_printf("\n");
-			assert(err != 2 && "Attempted to remove safe from region with no safe spaces");
-			key.erase(key.end());
+			key_iter removing = key.begin();
+			region unbomb = **removing;
+			int err = unbomb.remove_bomb(cell);
+			if(err == 2)
+				assert(err != 2 && "Attempted to remove bomb from region with no bombs");
+			size_t old_size = key.size();
+			remove_region(*removing); //should remove "removing" from key
+			assert(old_size > key.size());
+			add_region(unbomb);
 			++found;
+			(void) err, (void) old_size; //suppress unused warnings
 		}
+
 
 		for(std::deque<rc_coord>::iterator ri = bomb_queue.begin(); ri != bomb_queue.end();) {
 			if(*ri == cell) {
@@ -502,7 +452,7 @@ namespace ms {
 	 **/
 	int solver::fill_queue() {
 		int num_added = 0;
-		for(region& check : regions) {
+		for(const region& check : regions) {
 			if(check.size() == check.min()) { //implies size == max == min for all valid state regions
 				for(rc_coord bomb : check) {
 					num_added += add_to_bomb_queue(bomb);

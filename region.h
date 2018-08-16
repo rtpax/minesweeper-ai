@@ -10,12 +10,15 @@
 
 namespace ms {
 
-
+	class solver;
 
 	struct region {
 	private:
+		friend solver;
 		std::set<rc_coord> _cells;
-		unsigned int _max, _min;
+		mutable unsigned int _max, _min;
+		void order_preserve_merge_to(const region& arg) const;
+
 	public:
 		/**The maximum number of bombs that could possibly be in the region.\n Complexity \f$O(1)\f$**/
 		unsigned int max() const { return _max; }
