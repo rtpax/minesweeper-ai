@@ -1,7 +1,3 @@
-~ Fixed bug in solver::trim_regions (infinite loop)
-~ Added check for past-the-end iterator in solver::add_region
-~ added region::order_preserve_merge_to for const modification (made min/max mutable)
-~ modified remove_safe/bomb_from_all_regions to work with set
-~ changed add_region to return a pair with bool as second to indicate if anything changed
-~ combined find_aux_region and lazy_aux_region with bool input to differentiate (only 1 line difference between the two)
-~ fixed bug in *_aux_regions where all regions were tested each time, not just recently modified
+~   Minor edit to LICENSE (license body not changed, only header)
+~   Updated debug printing to use iterators (since set doesn't have operator[])
+~   Added display of gamestate at end

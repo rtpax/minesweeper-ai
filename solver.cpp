@@ -109,7 +109,10 @@ namespace ms {
 				}
 			}
 		}
-		add_region(remaining);
+		//this check is added to prevent massive slowdowns from adding remaining when it intersects around 100 cells -> 2000 cells
+		//the choice of 20 is somewhat arbitrary, TODO get a better system for deciding when to add remaining
+		if(remaining.size() < 20)
+			add_region(remaining);
 
 		return 0;
 	}
@@ -136,23 +139,22 @@ namespace ms {
 
 		// using clock = std::chrono::high_resolution_clock;
 		// clock::duration accum1 = std::chrono::seconds(0), accum2 = std::chrono::seconds(0);
-
+		debug_printf("<1>");
 		std::vector<regions_iter> regions_added;
 		for(regions_iter ri = regions.begin(); ri != regions.end(); ++ri)
 			regions_added.push_back(ri);
+		debug_printf("<2>");
 
 		while (!regions_added.empty()) { //loops as long as something was added
-			std::cout << "[" << regions_added.size() << "/" << regions.size() << "]";
-			std::cout.flush();
+			debug2_printf("[%zu/%zu]", regions_added.size(), regions.size());
+
 			if(lazy && fill_queue())
 				break;
 
 			std::vector<region> region_queue;
 			for(std::vector<regions_iter>::iterator ri = regions_added.begin(); ri != regions_added.end(); ++ri) {
-				std::cout << ".";
-				std::cout.flush();
+				debug2_printf(".");
 				key_type overlaps;
-				// clock::time_point A = clock::now();
 				for(rc_coord cell : **ri) {
 					for(regions_iter over : cell_keys[cell.row][cell.col]) {
 						key_iter it = overlaps.find(over);
@@ -161,7 +163,6 @@ namespace ms {
 						}
 					}
 				}
-				// clock::time_point B = clock::now();
 				for(key_iter rj = overlaps.begin(); rj != overlaps.end(); ++rj) {
 					if(*rj == *ri)
 						continue;
@@ -169,13 +170,8 @@ namespace ms {
 					region_queue.push_back((*ri)->subtract(**rj));
 					region_queue.push_back((*rj)->subtract(**ri));
 				}
-				// clock::time_point C = clock::now();
-				// accum1 += B - A;
-				// accum2 += C - B;
-				// std::cout << "[" << accum1.count() << ":" << accum2.count() << "]\n";
 			}
-			std::cout << "*";
-			std::cout.flush();
+			debug2_printf("*");
 			regions_added.clear();
 			for(region& to_add : region_queue) {
 				auto add_info = add_region(to_add);
@@ -187,9 +183,10 @@ namespace ms {
 			}
 
 		}
+		debug_printf("<3>");
+
 		std::cout << "\n";
 		assert_each_trim();
-		assert_norepeat();
 
 		debug_printf("done\n");
 		return regions.size() - size;
@@ -604,6 +601,12 @@ namespace ms {
 				}
 			}
 		}
+
+		if(choices.size() == 1 && choices.front() == rc_coord(0,0))
+			for(const region& r : regions) {
+				debug_print_region(r);
+				debug_printf("\n");
+			}
 
 		if(choices.size() > 0) {
 			int open_index = rng() % choices.size();

@@ -66,7 +66,7 @@ int main() {
     std::string line;
     std::string row;
     std::string col;
-    
+
 
     while(ai.view_grid().gamestate() == ms::grid::RUNNING || ai.view_grid().gamestate() == ms::grid::NEW) {
         //printms(ai.view_grid());
@@ -82,7 +82,7 @@ int main() {
             printms(ai.view_grid());
         } else if (line == "solve") {
             int opened = ai.solve();
-            std::cout << opened << " steps taken\n";            
+            std::cout << opened << " steps taken\n";
         } else if (line == "step") {
             ms::rc_coord opened = ai.step();
             if(opened != ms::rc_coord{0xffff,0xffff})
@@ -123,6 +123,23 @@ int main() {
     }
 
     printms(ai.view_grid());
+
+    switch(ai.view_grid().gamestate()) {
+    case ms::grid::WON:
+        std::cout << "WON\n";
+        break;
+    case ms::grid::LOST:
+        std::cout << "LOST\n";
+        break;
+    case ms::grid::RUNNING:
+        std::cout << "RUNNING\n";
+        break;
+    case ms::grid::NEW:
+        std::cout << "NEW\n";
+        break;
+    default:
+        std::cout << "gamestate error\n";
+    }
 
     return 0;
 }

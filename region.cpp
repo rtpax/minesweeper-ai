@@ -91,14 +91,14 @@ namespace ms {
 
 		if(!ret.is_reasonable()) {
 			debug_printf("{");
-			for(unsigned int i = 0; i < size(); ++i)
-				debug_printf("(%u,%u)",(*this)[i].row,(*this)[i].col);
+			for(auto i = this->begin(); i != this->end(); ++i)
+				debug_printf("(%u,%u)",i->row,i->col);
 			debug_printf("}\\{");
-			for(unsigned int i = 0; i < arg.size(); ++i)
-				debug_printf("(%u,%u)",(arg)[i].row,(arg)[i].col);
+			for(auto i = arg.begin(); i != arg.end(); ++i)
+				debug_printf("(%u,%u)",i->row,i->col);
 			debug_printf("} -> {");
-			for(unsigned int i = 0; i < ret.size(); ++i)
-				debug_printf("(%u,%u)",(ret)[i].row,(ret)[i].col);
+			for(auto i = ret.begin(); i != ret.end(); ++i)
+				debug_printf("(%u,%u)",i->row,i->col);
 			debug_printf("}\n");
 			debug_printf("{%zu : %u - %u}\\{%zu : %u - %u} -> {%zu : %u - %u}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
 		}
@@ -162,14 +162,14 @@ namespace ms {
 
 		if(!ret.is_reasonable()) {
 			debug_printf("{");
-			for(unsigned int i = 0; i < size(); ++i)
-				debug_printf("(%u,%u)",(*this)[i].row,(*this)[i].col);
+			for(auto i = this->begin(); i != this->end(); ++i)
+				debug_printf("(%u,%u)",i->row,i->col);
 			debug_printf("}\\{");
-			for(unsigned int i = 0; i < arg.size(); ++i)
-				debug_printf("(%u,%u)",(arg)[i].row,(arg)[i].col);
+			for(auto i = arg.begin(); i != arg.end(); ++i)
+				debug_printf("(%u,%u)",i->row,i->col);
 			debug_printf("} -> {");
-			for(unsigned int i = 0; i < ret.size(); ++i)
-				debug_printf("(%u,%u)",(ret)[i].row,(ret)[i].col);
+			for(auto i = ret.begin(); i != ret.end(); ++i)
+				debug_printf("(%u,%u)",i->row,i->col);
 			debug_printf("}\n");
 			debug_printf("{%zu : %u - %u}\\{%zu : %u - %u} -> {%zu : %u - %u}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
 		}
@@ -213,14 +213,14 @@ namespace ms {
 
 		if(!ret.is_reasonable()) {
 			debug_printf("{");
-			for(unsigned int i = 0; i < size(); ++i)
-				debug_printf("(%u,%u)",(*this)[i].row,(*this)[i].col);
+			for(auto i = this->begin(); i != this->end(); ++i)
+				debug_printf("(%u,%u)",i->row,i->col);
 			debug_printf("}\\{");
-			for(unsigned int i = 0; i < arg.size(); ++i)
-				debug_printf("(%u,%u)",(arg)[i].row,(arg)[i].col);
+			for(auto i = arg.begin(); i != arg.end(); ++i)
+				debug_printf("(%u,%u)",i->row,i->col);
 			debug_printf("} -> {");
-			for(unsigned int i = 0; i < ret.size(); ++i)
-				debug_printf("(%u,%u)",(ret)[i].row,(ret)[i].col);
+			for(auto i = ret.begin(); i != ret.end(); ++i)
+				debug_printf("(%u,%u)",i->row,i->col);
 			debug_printf("}\n");
 			debug_printf("{%zu : %u - %u}\\{%zu : %u - %u} -> {%zu : %u - %u}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
 		}
