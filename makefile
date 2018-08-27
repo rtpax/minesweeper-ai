@@ -6,19 +6,20 @@ CXX=g++
 OPTIMIZATION=-O0 -fno-inline
 DEBUG_LEVEL=-DDEBUG
 
-CPPFLAGS=$(DEBUG_LEVEL)
+CPPFLAGS=$(DEBUG_LEVEL) -I/msys64/mingw64/include
 CXXFLAGS=-g -c -Wall -std=c++17 $(OPTIMIZATION)
 LDFLAGS=-g
-LDLIBS=
+LDLIBS=-L/msys64/mingw64/libs -lboost
 
-SRCS=grid.cpp main.cpp region.cpp solver.cpp spingrid.cpp spinoff.cpp
+SRCS=grid.cpp main.cpp region.cpp solver.cpp spingrid.cpp spinoff.cpp region_set.cpp
 MODULES=$(SRCS:.cpp=)
 OBJS=$(SRCS:.cpp=.o)
 
 debug_DEP=
 test_DEP=
 
-solver_DEP=solver.h $(grid_DEP) $(region_DEP) $(test_DEP)
+region_set_DEP=region_set.h $(region_DEP) $(test_DEP)
+solver_DEP=solver.h $(region_set_DEP) $(grid_DEP) $(region_DEP) $(test_DEP)
 region_DEP=region.h $(test_DEP)
 spingrid_DEP=spingrid.h $(grid_DEP) $(test_DEP)
 spinoff_DEP=spinoff.h $(solver_DEP) $(spingrid_DEP) $(test_DEP)

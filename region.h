@@ -10,11 +10,14 @@
 
 namespace ms {
 
-	class solver;
+	class region_set;
+	class region_cmp_no_min_max;
 
 	struct region {
 	private:
-		friend solver;
+		friend region_set;
+		friend region_cmp_no_min_max;
+
 		std::set<rc_coord> _cells;
 		mutable unsigned int _max, _min;
 		void order_preserve_merge_to(const region& arg) const;
@@ -51,17 +54,6 @@ namespace ms {
 		bool operator!=(const region& comp) const { return !(*this == comp); }
 		int compare_cells(const region& comp) const {
 			return !(*this == comp);
-		}
-		/**
-		 * lexicographically compare cells, supplied only for use with std::set
-		 * 
-		 * \note only cells are compared, not min or max. thus, if `a.samearea(b)` then 
-		 * `!(a < b || b < a)` and they are equivalent in a set. this is a desirable characteristic
-		 * because it allows easy searching, but must be careful when adding to a set that you don't
-		 * "lose" your region
-		 **/
-		bool operator<(const region& comp) const {
-			return _cells < comp._cells;
 		}
 
 		bool samearea(const region& comp) const;

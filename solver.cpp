@@ -185,7 +185,7 @@ namespace ms {
 		}
 		debug_printf("<3>");
 
-		std::cout << "\n";
+		debug2_printf("\n");
 		assert_each_trim();
 
 		debug_printf("done\n");

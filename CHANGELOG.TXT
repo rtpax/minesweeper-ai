@@ -1,3 +1,2 @@
-~   Minor edit to LICENSE (license body not changed, only header)
-~   Updated debug printing to use iterators (since set doesn't have operator[])
-~   Added display of gamestate at end
+~   Removed cout from solver.cpp (to debug2_printf)
+~   Started region_set, implemented with subset_type using set
