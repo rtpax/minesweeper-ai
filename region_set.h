@@ -4,6 +4,7 @@
 
 #include "region.h"
 #include <set>
+#include <unordered_set>
 #include <boost/multi_array.hpp>
 
 namespace ms {
@@ -22,13 +23,12 @@ struct region_cmp_no_min_max {
     }
 };
 
-struct region_iter_cmp_no_min_max {
-    bool operator()(std::set<region, region_cmp_no_min_max>::iterator arg1, std::set<region, region_cmp_no_min_max>::iterator arg2) {
-        return region_cmp_no_min_max(*arg1, *arg2);
+struct region_iter_hash {
+    std::size_t operator()(const std::set<region, region_cmp_no_min_max>::iterator& arg) const {
+        std::hash<const region*> my_hash;
+        return my_hash(&(*arg));
     }
-}
-
-class region_key;
+};
 
 class region_set {
 public:
@@ -39,7 +39,7 @@ public:
     typedef set_type::reverse_iterator reverse_iterator;
     typedef set_type::const_reverse_iterator const_reverse_iterator;
 
-    typedef std::set<iterator, region_iter_cmp_no_min_max> subset_type;
+    typedef std::unordered_set<iterator, region_iter_hash> subset_type;
     typedef subset_type key_type;
 
 
@@ -53,6 +53,7 @@ public:
     void reset_modified_regions();
 
     subset_type regions_intersecting(const region&) const;
+    const subset_type& regions_intersecting(rc_coord) const;
 
     int remove_safe(rc_coord);
     int remove_bomb(rc_coord);
@@ -65,8 +66,8 @@ public:
     const_iterator cend() const { return contents.cend(); }
     reverse_iterator rbegin() { return contents.rbegin(); }
     reverse_iterator rend() { return contents.rend(); }
-    const_reverse_iterator crbegin() const { return contents.rcbegin(); }
-    const_reverse_iterator crend() const { return contents.rcend(); }
+    const_reverse_iterator crbegin() const { return contents.crbegin(); }
+    const_reverse_iterator crend() const { return contents.crend(); }
 
 private:
 
@@ -75,16 +76,8 @@ private:
     boost::multi_array<key_type, 2> keys;
 
     void order_preserve_merge(set_type::iterator, const region&);
-    void indicate_modified(set_type::iterator);
 };
 
-class region_key {
-private:
-    friend region_set;
-public:
-
-    
-}
 
 
 }

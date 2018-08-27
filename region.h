@@ -20,8 +20,6 @@ namespace ms {
 
 		std::set<rc_coord> _cells;
 		mutable unsigned int _max, _min;
-		void order_preserve_merge_to(const region& arg) const;
-
 	public:
 		/**The maximum number of bombs that could possibly be in the region.\n Complexity \f$O(1)\f$**/
 		unsigned int max() const { return _max; }
@@ -70,6 +68,7 @@ namespace ms {
 		size_t size() const { return _cells.size(); }
 		/**Returns true if the region has no cells, false otherwise.\n Complexity \f$O(1)\f$.**/
 		bool empty() const { return _cells.empty(); }
+		bool contains(rc_coord cell) const { return _cells.find(cell) != _cells.end(); }
 
 		typedef std::set<rc_coord>::iterator iterator;
 		typedef std::set<rc_coord>::const_iterator const_iterator;

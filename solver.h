@@ -8,6 +8,7 @@
 #include <cassert>
 #include "grid.h"
 #include "region.h"
+#include "region_set.h"
 
 /**
  * 
@@ -48,32 +49,18 @@ namespace ms {
 	protected:
 		static std::mt19937 rng;
 
-		std::set<region> regions;
+		grid g;
+		region_set regions;
 		std::deque<rc_coord> safe_queue;
 		std::deque<rc_coord> bomb_queue;
 
-		typedef std::set<region>::iterator regions_iter;
-
-		struct key_less {
-			bool operator()(regions_iter it1, regions_iter it2) { return *it1 < *it2; }
-		};
-
-		typedef std::set<regions_iter, key_less> key_type;
-		typedef key_type::iterator key_iter;
-
-		key_type ** cell_keys;
-
-		int init_cell_keys();
-		regions_iter remove_region(regions_iter to_remove);
-		std::pair<regions_iter, bool> add_region(const region& to_add);
-		int remove_safe_from_all_regions(rc_coord cell);
-		int remove_bomb_from_all_regions(rc_coord cell);
+		int remove_safe(rc_coord cell);
+		int remove_bomb(rc_coord cell);
 
 		int clear_queue();
 		int apply_open(rc_coord cell);
 		int apply_flag(rc_coord cell);
 		
-		grid g;
 
 
 		int trim_regions();

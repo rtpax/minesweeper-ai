@@ -17,7 +17,7 @@ PRIORITY: MEDIUM
 ~   along the speed vein... create a recently modified region set so that each time
     find_aux_regions is started we don't have to check everything
 ~   carry over likelyhood data to next iteration or make it really fast to calculate
-~   pull out regions and kell_keys (and possibly the queues) into a seperate container
+****pull out regions and kell_keys (and possibly the queues) into a seperate container
     class to seperate the logic
 
 PRIORITY: LOW

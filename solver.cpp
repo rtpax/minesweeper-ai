@@ -9,13 +9,13 @@ namespace ms {
 
 #ifndef NDEBUG
 	#define assert_each_trim() do {\
-		for(regions_iter ri = regions.begin(); ri != regions.end(); ++ri) {\
+		for(region_set::iterator ri = regions.begin(); ri != regions.end(); ++ri) {\
 			assert_trim(*ri);\
 		}\
 	}while(0)
 	#define assert_norepeat() do {\
-		for(regions_iter ri = regions.begin(); std::next(ri, 1) != regions.end(); ++ri) {\
-			for(regions_iter rj = std::next(ri, 1); rj != regions.end(); ++rj) {\
+		for(region_set::iterator ri = regions.begin(); std::next(ri, 1) != regions.end(); ++ri) {\
+			for(region_set::iterator rj = std::next(ri, 1); rj != regions.end(); ++rj) {\
 				assert((*ri) != *rj);\
 			}\
 		}\
@@ -26,27 +26,15 @@ namespace ms {
 #endif
 
 
-	int solver::init_cell_keys() {
-		cell_keys = new key_type*[g.height()];
-		for(unsigned i = 0; i < g.height(); ++i) {
-			cell_keys[i] = new key_type[g.width()]();
-		}
-		return 0;
-	}
-
 	/**
 	 * Copies grid, all other members default initialize
 	 **/
-	solver::solver(const grid& start) : g(start, grid::FULL_COPY) {
-		init_cell_keys();
-	}
+	solver::solver(const grid& start) : g(start, grid::FULL_COPY), regions(g.height(), g.width()) {	}
 
 	/**
 	 * Initializes the internal grid with the given parameters
 	 **/
-	solver::solver(unsigned int height, unsigned int width, unsigned int bombs) : g(height,width,bombs) {
-		init_cell_keys();
-	}
+	solver::solver(unsigned int height, unsigned int width, unsigned int bombs) : g(height,width,bombs), regions(height, width) { }
 
 	/**
 	 * Find the areas around each number where there could be bombs.
@@ -104,15 +92,15 @@ namespace ms {
 						if(gotten < num_flags)
 							throw std::runtime_error("number of flags surrounding the cell exceeds the number of the cell");
 						reg.set_count(gotten - num_flags);
-						add_region(reg);
+						regions.add(reg);
 					}
 				}
 			}
 		}
 		//this check is added to prevent massive slowdowns from adding remaining when it intersects around 100 cells -> 2000 cells
-		//the choice of 20 is somewhat arbitrary, TODO get a better system for deciding when to add remaining
-		if(remaining.size() < 20)
-			add_region(remaining);
+		//the choice of 10 is somewhat arbitrary, TODO get a better system for deciding when to add remaining
+		if(remaining.size() < 10)
+			regions.add(remaining);
 
 		return 0;
 	}
@@ -125,7 +113,7 @@ namespace ms {
 	 *   - if empty, discard it
 	 *   - if nonempty, add the intersection and subraction to `this.aux_regions`
 	 * 
-	 * Returns the number of regions added (note that it does not include modified regions, only added)
+	 * Returns the number iterations, (zero if nothing to do)
 	 * 
 	 * If `lazy == true` it stops as soon as a cells can be added to the queue
 	 * 
@@ -134,16 +122,13 @@ namespace ms {
 	 **/
 	int solver::find_aux_regions(bool lazy) {
 		debug_printf("find_aux_regions [%s]...", lazy?"lazy":"nonlazy");
-		trim_regions();
-		int size = regions.size();
+		
+		int iterations = 0;
 
 		// using clock = std::chrono::high_resolution_clock;
 		// clock::duration accum1 = std::chrono::seconds(0), accum2 = std::chrono::seconds(0);
-		debug_printf("<1>");
-		std::vector<regions_iter> regions_added;
-		for(regions_iter ri = regions.begin(); ri != regions.end(); ++ri)
-			regions_added.push_back(ri);
-		debug_printf("<2>");
+
+		const region_set::subset_type& regions_added = regions.get_modified_regions();
 
 		while (!regions_added.empty()) { //loops as long as something was added
 			debug2_printf("[%zu/%zu]", regions_added.size(), regions.size());
@@ -152,18 +137,12 @@ namespace ms {
 				break;
 
 			std::vector<region> region_queue;
-			for(std::vector<regions_iter>::iterator ri = regions_added.begin(); ri != regions_added.end(); ++ri) {
+
+			for(auto ri = regions_added.begin(); ri != regions_added.end(); ++ri) {
 				debug2_printf(".");
-				key_type overlaps;
-				for(rc_coord cell : **ri) {
-					for(regions_iter over : cell_keys[cell.row][cell.col]) {
-						key_iter it = overlaps.find(over);
-						if(it == overlaps.end()) {
-							overlaps.insert(over);
-						}
-					}
-				}
-				for(key_iter rj = overlaps.begin(); rj != overlaps.end(); ++rj) {
+				region_set::subset_type overlaps = regions.regions_intersecting(**ri);
+				
+				for(auto rj = overlaps.begin(); rj != overlaps.end(); ++rj) {
 					if(*rj == *ri)
 						continue;
 					region_queue.push_back((*ri)->intersect(**rj));
@@ -172,109 +151,19 @@ namespace ms {
 				}
 			}
 			debug2_printf("*");
-			regions_added.clear();
+			regions.reset_modified_regions();
 			for(region& to_add : region_queue) {
-				auto add_info = add_region(to_add);
-				if(add_info.second) {
-					//this check might take more time than it's worth
-					if(std::find(regions_added.begin(), regions_added.end(), add_info.first) == regions_added.end())
-						regions_added.push_back(add_info.first);
-				}
+				regions.add(to_add);
 			}
-
+			++iterations;
 		}
-		debug_printf("<3>");
-
 		debug2_printf("\n");
-		assert_each_trim();
-
 		debug_printf("done\n");
-		return regions.size() - size;
+		return iterations;
 	}
-
-	/**
-	 * Removes all empty regions and regions that give no information about min max beyong their size (min = 0, max = size).
-	 * 
-	 * Returns the number of regions removed
-	 * 
-	 * complexity \f$O(N)\f$
-	 **/
-	int solver::trim_regions() {
-		int removed = 0;
-
-		for (regions_iter ri = regions.begin(); ri != regions.end();) {
-			if(!ri->is_helpful()) {
-				ri = remove_region(ri);
-				++removed;
-			} else {
-				++ri;
-			}
-		}
-
-		return removed;
-	}
-
-	/**
-	 * Adds a region to the list of regions, merging if a region already exists covering the same area.
-	 * Skips regions that offer no information. If a new region is added, add it to the appropriate cell_keys
-	 * 
-	 * Returns `regions.end()` if region not added, otherwise returns an iterator to the region added/merged. 
-	 *
-	 * Complexity \f$O(N)\f$
-	 **/
-	std::pair<solver::regions_iter, bool> solver::add_region(const region& to_add) {
-		typedef std::pair<solver::regions_iter, bool> ret_type;
-		debug_printf("adding region ");
-		debug_print_region(to_add);
-		debug_printf("...\n");
-		if(!to_add.is_helpful()) {
-			debug_printf("skipping because unhelpful\n");
-			return ret_type(regions.end(), false);
-		}
-
-		regions_iter added;
-		bool did_add = false;
-		regions_iter similar = regions.lower_bound(to_add);
-		if(similar == regions.end() || !similar->samearea(to_add)) {
-			auto added_info = regions.insert(to_add);
-			assert(added_info.second);
-			added = added_info.first;
-			did_add = true;
-			for(rc_coord cell : to_add) {
-				cell_keys[cell.row][cell.col].insert(added);
-			}
-		} else {
-			did_add = similar->min() < to_add.min() || similar->max() > to_add.max();
-			similar->order_preserve_merge_to(to_add);
-			added = similar;
-		}
-
-		debug_printf("region added\n");
-		return ret_type(added, did_add);
-	}
-
-	/**
-	 * Removes the specified region from the list of regions and all associated keys.
-	 * 
-	 * Complexity \f$O(log(N) + M)\f$ where \f$M\f$ is the size of the region and 
-	 * \f$N\f$ is the size of `regions`
-	 **/
-	solver::regions_iter solver::remove_region(regions_iter to_remove) {
-		for(rc_coord cell : *to_remove) {
-			key_type& key = cell_keys[cell.row][cell.col];
-			key_iter remove_it = std::find(key.begin(), key.end(), to_remove);
-			assert(remove_it != key.end());
-			key.erase(remove_it);
-		}
-		return regions.erase(to_remove);
-	}
-
-
-
 
 
 	int solver::find_regions() {
-		trim_regions();
 		find_base_regions();
 		find_aux_regions(true);
 		if(!(safe_queue.empty() && bomb_queue.empty()))
@@ -289,27 +178,13 @@ namespace ms {
 
 	/**
 	 * To be called when a safe cell is opened.
-	 * Removes `cell` from all regions, so it can be forgotten about and free up memory and 
-	 * simplify future calculations. Guaranteed to not create any un-trim regions
+	 * Removes `cell` from all regions, so it can be forgotten about and free up memory 
+	 * and simplify future calculations
 	 * 
 	 * returns nonzero if the safe cell is found, otherwise returns 0.
 	 **/
-	int solver::remove_safe_from_all_regions(rc_coord cell) {
-		key_type& key = cell_keys[cell.row][cell.col];
-		int found = 0;
-
-		while(!key.empty()) {
-			key_iter removing = key.begin();
-			region unsafe = **removing;
-			int err = unsafe.remove_safe(cell);
-			assert(err != 2 && "Attempted to remove safe from region with no safe spaces");
-			size_t old_size = key.size();
-			remove_region(*removing); //should remove "removing" from key
-			assert(old_size > key.size());
-			add_region(unsafe);
-			++found;
-			(void) err, (void) old_size; //suppress unused warnings
-		}
+	int solver::remove_safe(rc_coord cell) {
+		int removed = regions.remove_safe(cell);	
 
 		for(std::deque<rc_coord>::iterator ri = bomb_queue.begin(); ri != bomb_queue.end();) {
 			if(*ri == cell) {
@@ -326,37 +201,18 @@ namespace ms {
 			}
 		}
 		
-		return found;
+		return removed;
 	}
 
 	/**
 	 * to be called when a bomb cell is opened
 	 * removes it from all regions, so it can be forgotten about and free up memory
-	 * skips regions that do not have the cell
-	 * throws an error if a region has the cell, but removal is impossible (has no bomb)
-	 * 
-	 * all empty cells are removed
+	 * and simplify future calculations
 	 * 
 	 * returns nonzero if the bomb cell is found, otherwise returns 0
 	 **/
-	int solver::remove_bomb_from_all_regions(rc_coord cell) {
-		key_type& key = cell_keys[cell.row][cell.col];
-		int found = 0;
-
-		while(!key.empty()) {
-			key_iter removing = key.begin();
-			region unbomb = **removing;
-			int err = unbomb.remove_bomb(cell);
-			if(err == 2)
-				assert(err != 2 && "Attempted to remove bomb from region with no bombs");
-			size_t old_size = key.size();
-			remove_region(*removing); //should remove "removing" from key
-			assert(old_size > key.size());
-			add_region(unbomb);
-			++found;
-			(void) err, (void) old_size; //suppress unused warnings
-		}
-
+	int solver::remove_bomb(rc_coord cell) {
+		int removed = regions.remove_bomb(cell);
 
 		for(std::deque<rc_coord>::iterator ri = bomb_queue.begin(); ri != bomb_queue.end();) {
 			if(*ri == cell) {
@@ -373,7 +229,7 @@ namespace ms {
 			}
 		}
 		
-		return found;
+		return removed;
 	}
 
 	int solver::find_leftover() {
@@ -408,7 +264,7 @@ namespace ms {
 		g.set_flag(arg.row, arg.col, grid::ms_flag);
 
 		if(g.get(arg.row, arg.col) == grid::ms_flag) {
-			remove_bomb_from_all_regions(arg);
+			remove_bomb(arg);
 			return 0;
 		} else {
 			return 1;
@@ -427,18 +283,20 @@ namespace ms {
 		case 0:
 			return 0;
 		case 1:
-			remove_safe_from_all_regions(arg);
+			remove_safe(arg);
 			return 1;
 		default: //multiple cells opened, remove all open cells
 			int ret = 0;
+			debug2_printf("<<");
 			for(unsigned int r = 0; r < g.height(); ++r) {
 				for(unsigned int c = 0; c < g.width(); ++c) {
 					grid::cell curcell = g.get(r,c);
 					if((curcell >= grid::ms_0 && curcell <= grid::ms_8) || curcell == grid::ms_non_bomb) {
-						ret += remove_safe_from_all_regions(rc_coord{r,c});
+						ret += !!remove_safe(rc_coord{r,c});
 					}
 				}
 			}
+			debug2_printf(">>\n");
 			return ret;	
 		}
 	}
@@ -493,13 +351,13 @@ namespace ms {
 
 
 	/**
-	 * Runs until the next step may fail.
+	 * Runs until the next step is not guaranteed to succeed.
 	 * 
 	 * Returns the number of steps taken.
 	 **/
 	int solver::solve_certain() {
 		int ret = 0;
-		while(step_certain() != rc_coord{0xffff,0xffff})
+		while(step_certain() != BAD_RC_COORD)
 			++ret;
 		return ret;
 	}
@@ -507,11 +365,11 @@ namespace ms {
 	/**
 	 * Opens/flags a cell if it is certain it will be correct.
 	 * 
-	 * Returns the cell opened, or {0xffff,0xffff} if none is opened
+	 * Returns the cell opened, or `BAD_RC_COORD` if none is opened
 	 **/
 	rc_coord solver::step_certain() {
 		if(g.gamestate() != grid::RUNNING) {
-			return rc_coord{ 0xffff,0xffff };
+			return BAD_RC_COORD;
 		}
 
 		if(bomb_queue.empty() && safe_queue.empty()) {
@@ -560,7 +418,7 @@ namespace ms {
 			}
 			return ret;
 		} else {
-			return rc_coord{ 0xffff,0xffff };
+			return BAD_RC_COORD;
 		}
 	}
 
@@ -573,7 +431,7 @@ namespace ms {
 	 **/
 	int solver::solve() {
 		int ret = 0;
-		while(step() != rc_coord{0xffff,0xffff})
+		while(step() != BAD_RC_COORD)
 			++ret;
 		return ret;
 	}
@@ -582,39 +440,52 @@ namespace ms {
 	 * Opens/flags a cell as long a game is running or ready to start running.
 	 * Opens cells that are certain first before attempting to open a new cell.
 	 * 
-	 * Returns the cell opened, or {0xffff,0xffff} if none is opened
+	 * Returns the cell opened, or BAD_RC_COORD if none is opened
 	 **/
 	rc_coord solver::step() {
 		if(g.gamestate() != grid::RUNNING && g.gamestate() != grid::NEW) {
-			return rc_coord{ 0xffff,0xffff };
+			return BAD_RC_COORD;
 		}
 
 		rc_coord ret = step_certain();
-		if(ret != rc_coord{ 0xffff,0xffff })
+		if(ret != BAD_RC_COORD) {
+			debug2_printf("certain[%u,%u]\n",ret.row,ret.col);
 			return ret;
+		}
 
-		std::vector<rc_coord> choices;
+		std::vector<rc_coord> best_locs;
+		float best_prob = 2; //higher than any real probability could be
+		float default_prob = (float) g.bombs() / (g.width() * g.height());
+
 		for(unsigned row = 0; row < g.height(); ++row) {
 			for(unsigned col = 0; col < g.width(); ++col) {
 				if(g.get(row,col) == grid::ms_hidden || g.get(row,col) == grid::ms_question) {
-					choices.push_back(rc_coord{row,col});
+					const region_set::subset_type& regions_at = regions.regions_intersecting(rc_coord(row, col));
+					float probability = regions_at.empty() ? default_prob : 1;
+					for(region_set::iterator reg : regions_at) {
+						probability = std::max((reg->min() + reg->max()) / (2.f * reg->size()), probability); //pick the worst probability
+					}
+					if(abs(probability - best_prob) < .001) { //close enough in probability
+						best_locs.push_back(rc_coord(row,col));
+					} else if(probability < best_prob) {
+						best_locs.clear();
+						best_locs.push_back(rc_coord(row,col));
+						best_prob = probability;
+					}
 				}
 			}
 		}
 
-		if(choices.size() == 1 && choices.front() == rc_coord(0,0))
-			for(const region& r : regions) {
-				debug_print_region(r);
-				debug_printf("\n");
-			}
 
-		if(choices.size() > 0) {
-			int open_index = rng() % choices.size();
-			apply_open(choices[open_index]);
-			return choices[open_index];
-		} else {
-			return rc_coord{ 0xffff,0xffff };
+		if(!best_locs.empty()) {
+			std::uniform_int_distribution<> uid(0, best_locs.size() - 1);
+			ret = best_locs[uid(rng)];
+			apply_open(ret);
+			debug2_printf("guess[%u,%u]\n",ret.row,ret.col);
+			return ret;
 		}
+		return BAD_RC_COORD;
+		
 	}
 
 

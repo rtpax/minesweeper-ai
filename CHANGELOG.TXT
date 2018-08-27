@@ -1,2 +1,6 @@
 ~   Removed cout from solver.cpp (to debug2_printf)
-~   Started region_set, implemented with subset_type using set
+~   implemented region_set, implemented with subset_type using set
+~   replaced rc_coord{0xffff,0xffff} with more generic BAD_RC_COORD
+~   changed ms::solver to use region_set
+~   changed bug_print-ing to use debug_printf when DEBUG == 1 and debug2_printf when DEBUG == 2
+~   added basic probability checking in solver::step

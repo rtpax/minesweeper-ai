@@ -15,7 +15,7 @@ region_set::region_set(unsigned height, unsigned width) : keys(boost::extents[he
  *
  * Complexity \f$O(N)\f$
  **/
-std::pair<region_set::iterator,bool> region_set::add(const region&) {
+std::pair<region_set::iterator,bool> region_set::add(const region& to_add) {
     typedef std::pair<iterator, bool> ret_type;
 
     if(!to_add.is_helpful()) {
@@ -25,6 +25,16 @@ std::pair<region_set::iterator,bool> region_set::add(const region&) {
     iterator added;
     bool did_add = false;
     iterator similar = contents.lower_bound(to_add);
+
+    region before_merge;
+    if(!to_add.is_reasonable()) {
+        debug_printf("!to_add.is_reasonable()\n");
+        debug_printf("to_add: "); debug_print_region(to_add);
+        debug_printf("before merge: "); debug_print_region(to_add);
+        exit(1);
+    }
+    assert(to_add.is_reasonable());
+
     if(similar == contents.end() || !similar->samearea(to_add)) {
         auto added_info = contents.insert(to_add);
         assert(added_info.second);
@@ -34,15 +44,24 @@ std::pair<region_set::iterator,bool> region_set::add(const region&) {
             keys[cell.row][cell.col].insert(added);
         }
     } else {
+        before_merge = *similar;
         did_add = similar->min() < to_add.min() || similar->max() > to_add.max();
-        order_preserve_merge_to(similar, to_add);
+        order_preserve_merge(similar, to_add);
         added = similar;
     }
 
     if (did_add) {
-        
+        modified_regions.insert(added);
     }
-    
+
+    if(!added->is_reasonable()) {
+        debug_printf("!added->is_reasonable()\n");
+        debug_printf("to_add: "); debug_print_region(to_add);
+        debug_printf("\nbefore merge: "); debug_print_region(before_merge);
+        debug_printf("\nafter merge: "); debug_print_region(*added);
+        exit(1);
+    }
+    assert(added->is_reasonable());
     return ret_type(added, did_add);
 }
 
@@ -59,26 +78,92 @@ region_set::iterator region_set::remove(iterator to_remove) {
         assert(remove_it != key.end());
         key.erase(remove_it);
     }
-    return regions.erase(to_remove);
+    modified_regions.erase(to_remove);
+    return contents.erase(to_remove);
 }
 void region_set::clear() {
-    for(key_type& key : keys) {
-        key.clear();
+    for(unsigned r = 0; r < keys.shape()[0]; ++r) {
+        for(unsigned c = 0; c < keys.shape()[1]; ++c) {
+            keys[r][c].clear();
+        }
     }
     contents.clear();
+    modified_regions.clear();
 }
 
 const region_set::subset_type& region_set::get_modified_regions() const {
-    
+    return modified_regions;
 }
-void region_set::reset_modified_regions();
+void region_set::reset_modified_regions() {
+    modified_regions.clear();
+}
 
-region_set::subset_type region_set::regions_intersecting(const region&) const;
+/**
+ * returns a container of type `subset_type` containing all regions that intersect 
+ * the input region.
+ * 
+ * Complexity \f$O(M \cdot N)\f$ where \f$M\f$ is the size of 
+ * the input region and \f$N\f$ is the number of regions.
+ **/
+region_set::subset_type region_set::regions_intersecting(const region& arg) const {
+    subset_type ret;
+    for(rc_coord cell : arg) {
+        const key_type& key = keys[cell.row][cell.col];
+        for(const iterator& elem : key) {
+            ret.insert(elem);
+        }
+    }
+    return ret;
+}
+const region_set::subset_type& region_set::regions_intersecting(rc_coord cell) const {
+    return keys[cell.row][cell.col];
+}
 
-int remove_safe(rc_coord);
-int remove_bomb(rc_coord);
+int region_set::remove_safe(rc_coord cell) {
+    int removed = 0;
+    std::vector<region> replacements;
+    key_type& key = keys[cell.row][cell.col];
+    while(!key.empty()) {
+        key_type::iterator it = key.begin();
+        region replace = **it;
+        int err = replace.remove_safe(cell);
+        (void) err; assert(err != 2 && "attempted to remove safe from region with no safe cells");
+        replacements.push_back(std::move(replace));
+        remove(*it);
+        ++removed;
+    }
+    for(region& to_add : replacements) {
+        add(std::move(to_add));
+    }
+    return removed;
+}
 
+int region_set::remove_bomb(rc_coord cell) {
+    int removed = 0;
+    std::vector<region> replacements;
+    key_type& key = keys[cell.row][cell.col];
+    while(!key.empty()) {
+        key_type::iterator it = key.begin();
+        region replace = **it;
+        int err = replace.remove_bomb(cell);
+        (void) err; assert(err != 2 && "attempted to remove bomb from region with no bomb cells");
+        replacements.push_back(std::move(replace));
+        remove(*it);
+        ++removed;
+    }
+    for(region& to_add : replacements) {
+        add(std::move(to_add));
+    }
+    return removed;
+}
 
+void region_set::order_preserve_merge(set_type::iterator to_change, const region& to_add) {
+    assert(to_change->samearea(to_add));
+    if(to_add._min > to_change->_min)
+        to_change->_min = to_add._min;
+    if(to_add._max < to_change->_max)
+        to_change->_max = to_add._max;
+}
 
 
 }
