@@ -1,6 +1,6 @@
-~   Removed cout from solver.cpp (to debug2_printf)
-~   implemented region_set, implemented with subset_type using set
-~   replaced rc_coord{0xffff,0xffff} with more generic BAD_RC_COORD
-~   changed ms::solver to use region_set
-~   changed bug_print-ing to use debug_printf when DEBUG == 1 and debug2_printf when DEBUG == 2
-~   added basic probability checking in solver::step
+~   Implemented autodependency in make and made all build version be built by "all"
+~   Changed all instances of `addcell` to `add_cell` to make naming more consistent
+~   moved test.cpp out to base folder to simplify build
+~   Got the tests succesfully compiling
+~   fixed bug in grid_test (assumed `get`ing hidden bombs would get bombs)
+~   added ostream operator<< for rc_coord and region

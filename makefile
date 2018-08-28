@@ -1,65 +1,58 @@
+DEBUG_LEVEL := 0
 
+CXXFLAGS := -O2 -std=c++17 -g
+DEBUG_CXXFLAGS := -O0 -fno-inline -g -std=c++17 -DDEBUG=$(DEBUG_LEVEL)
+CPPFLAGS := -I/c/msys64/mingw64/include
+LDFLAGS := -L/c/msys64/mingw64/libs
+LDLIBS :=
 
-CC=gcc
-CXX=g++
+OBJS := grid.o region.o region_set.o solver.o spingrid.o spinoff.o
+MAIN_OBJS := main.o $(OBJS)
+TEST_OBJS := ./test.o $(OBJS)
+DEBUG_OBJS := $(MAIN_OBJS:.o=.debug.o)
 
-OPTIMIZATION=-O0 -fno-inline
-DEBUG_LEVEL=-DDEBUG
+all: sweep.exe debug.exe test.exe
 
-CPPFLAGS=$(DEBUG_LEVEL) -I/c/msys64/mingw64/include
-CXXFLAGS=-g -c -Wall -std=c++17 $(OPTIMIZATION)
-LDFLAGS=-g
-LDLIBS=-L/c/msys64/mingw64/libs
+release: sweep.exe
 
-SRCS=grid.cpp main.cpp region.cpp solver.cpp spingrid.cpp spinoff.cpp region_set.cpp
-MODULES=$(SRCS:.cpp=)
-OBJS=$(SRCS:.cpp=.o)
+debug: debug.exe
 
-debug_DEP=
-test_DEP=
+test: test.exe
 
-region_set_DEP=region_set.h $(region_DEP) $(test_DEP)
-solver_DEP=solver.h region_set.h $(region_set_DEP) $(grid_DEP) $(region_DEP) $(test_DEP)
-region_DEP=region.h rc_coord.h $(test_DEP)
-spingrid_DEP=spingrid.h $(grid_DEP) $(test_DEP)
-spinoff_DEP=spinoff.h $(solver_DEP) $(spingrid_DEP) $(test_DEP)
-main_DEP=solver.h spinoff.h $(test_DEP)
-grid_DEP=grid.h $(test_DEP)
+sweep.exe: $(MAIN_OBJS)
+	g++ $(MAIN_OBJS) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o sweep.exe
 
-MODULE_CPPFLAGS=CPPFLAGS
-MODULE_CXXFLAGS=CXXFLAGS
+debug.exe: $(DEBUG_OBJS)
+	g++ $(DEBUG_OBJS) $(DEBUG_CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o debug.exe
 
-OUT=sweep.exe
+test.exe: $(TEST_OBJS)
+	g++ $(TEST_OBJS) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o test.exe
 
-all: $(OUT)
+%.o: %.cpp
+	g++ -c $(CPPFLAGS) $(CXXFLAGS) $*.cpp -o $*.o
+	g++ -MM $(CPPFLAGS) $(CXXFLAGS) $*.cpp > $*.d
 
-set-fast-vars:
-	$(eval OPTIMIZATION=-O2) 
-	$(eval DEBUG_LEVEL=-DNDEBUG) 
+%.debug.o: %.cpp
+	g++ -c $(CPPFLAGS) $(DEBUG_CXXFLAGS) $*.cpp -o $*.debug.o
+	g++ -MM $(CPPFLAGS) $(DEBUG_CXXFLAGS) $*.cpp > $*.debug.d
 
-fast: set-fast-vars all
+-include $(MAIN_OBJS:.o=.d)
+-include $(TEST_OBJS:.o=.d)
+-include $(DEBUG_OBJS:.o=.d)
 
-set-debug-vars:
-	$(eval DEBUG_LEVEL=-DDEBUG=2)
-
-debug: set-debug-vars all
-
-nolink: $(OBJS)
-
-$(OUT):$(OBJS)
-	$(CXX) $(OBJS) -o $(OUT) $(LDFLAGS) $(LDLIBS)
-
-$(foreach module,$(MODULES),$(eval CUR_MODULE:=$(module)) $(eval include makemodule.mk))
-
-
+debug-clean:
+	rm -rf *.debug.o *.debug.d debug.exe
 
 clean:
-	rm -f $(OBJS)
+	rm -rf *.o *.d
 
 distclean: clean
-	rm -f $(OUT)
+	rm -rf *.exe
 
-include maketest.mk
+
+
+
+
 
 
 

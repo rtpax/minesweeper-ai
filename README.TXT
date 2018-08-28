@@ -15,3 +15,5 @@ general overview of how it works:
 4.  Open the cell that has the best chance of winning and go back to [1]
 
 
+
+This application uses boost C++ library and CATCH C++ testing framework

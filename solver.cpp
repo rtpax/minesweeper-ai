@@ -57,7 +57,7 @@ namespace ms {
 
 		for (unsigned int r = 0; r < g.height(); ++r) {
 			for (unsigned int c = 0; c < g.width(); ++c) {
-				remaining.addcell(rc_coord(r,c));
+				remaining.add_cell(rc_coord(r,c));
 			}
 		}
 		remaining.set_count(g.bombs());
@@ -78,7 +78,7 @@ namespace ms {
 								switch (g.get(r + rr, c + cc)) {
 								case grid::ms_hidden:
 								case grid::ms_question:
-									reg.addcell(rc_coord(r + rr, c + cc));
+									reg.add_cell(rc_coord(r + rr, c + cc));
 									break;
 								case grid::ms_flag:
 									++num_flags;

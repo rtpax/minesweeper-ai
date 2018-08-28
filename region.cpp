@@ -7,13 +7,13 @@ namespace ms {
 
 	/**
 	 * Adds a cell to a region if it is not contained already
-	 * The resulting region is guaranteed to be trim if it was before addcell was called.
+	 * The resulting region is guaranteed to be trim if it was before add_cell was called.
 	 * 
 	 * Return 1 if it adds the cell, 0 otherwise
 	 * 
 	 * Complexity \f$O(log(N))\f$
 	 **/
-	int region::addcell(rc_coord arg) {
+	int region::add_cell(rc_coord arg) {
 		iterator it = _cells.lower_bound(arg); //user lower_bound instead of find, use `it` to speed up insertion
 		if(*it == arg) { 
 			return 0;
@@ -76,7 +76,7 @@ namespace ms {
 		region ret;
 		for (iterator it = begin(); it != end(); ++it) {
 			if(arg.find(*it) != arg.end()) {
-				ret.addcell(*it);
+				ret.add_cell(*it);
 			}
 		}
 
@@ -152,7 +152,7 @@ namespace ms {
 		ret._cells = _cells;
 		int common = 0;
 		for (iterator it = arg.begin(); it != arg.end(); ++it) {
-			if (!ret.addcell(*it))
+			if (!ret.add_cell(*it))
 				++common;
 		}
 

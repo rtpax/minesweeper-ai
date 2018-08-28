@@ -2,6 +2,7 @@
 #define MS_RC_COORD_H
 
 #include <limits>
+#include <iostream>
 
 namespace ms {
 
@@ -29,7 +30,10 @@ struct rc_coord {
 
 /**indicates a bad value for an rc_coord, such as when searching for an rc_coord but none is found**/
 inline constexpr rc_coord BAD_RC_COORD{ std::numeric_limits<unsigned>::max(), std::numeric_limits<unsigned>::max() };
-
+	
+inline std::ostream& operator<<(std::ostream& os, const rc_coord& rc) {
+    return os << "(" << rc.row << "," << rc.col << ")";
+}
 
 }
 

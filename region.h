@@ -5,8 +5,10 @@
 #include <cassert>
 #include <cstddef>
 #include <set>
+#include <iostream>
 #include "rc_coord.h"
 #include "debug.h"
+
 
 namespace ms {
 
@@ -56,7 +58,7 @@ namespace ms {
 
 		bool samearea(const region& comp) const;
 		bool has_intersect(const region& arg) const;
-		int addcell(rc_coord rc);
+		int add_cell(rc_coord rc);
 		int remove_bomb(rc_coord bomb);
 		int remove_safe(rc_coord safe);
 		int trim();
@@ -89,6 +91,18 @@ namespace ms {
 		#define assert_nonempty(arg)
 #endif
 	};
+
+	inline std::ostream& operator<<(std::ostream& os, const region& r) {
+		os << "{ [" << r.size() << "|" << r.min() << "-" << r.max()  << "] ";
+		if(!r.empty()) {
+			auto it = r.begin();
+			for(; std::next(it) != r.end(); ++it) {
+				os << *it << ",";
+			}
+			os << *it;
+		}
+		return os << " }";
+	}
 
 	/**Print information about rc_coord iff `debug_print`ing is enabled**/
 	inline void debug_print_rc_coord(const rc_coord& arg) {
