@@ -1,6 +1,6 @@
-~   Implemented autodependency in make and made all build version be built by "all"
-~   Changed all instances of `addcell` to `add_cell` to make naming more consistent
-~   moved test.cpp out to base folder to simplify build
-~   Got the tests succesfully compiling
-~   fixed bug in grid_test (assumed `get`ing hidden bombs would get bombs)
-~   added ostream operator<< for rc_coord and region
+~   Fixed autodependency target names for *.debug.o and test/test.o (and returned test to original spot at ./test/test.cpp)
+~   Removed obsolete trim and assert methods in ms::region
+~   fixed bug in region_test.h (set count on same region twice, rather than each once)
+~   added -Wall flag
+~   fixed bug in solver step (abs instead of fabs for floating, caused bad truncation)
+~   removed spingrid and spinoff (finally)

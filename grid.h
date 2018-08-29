@@ -5,11 +5,6 @@
 
 
 namespace ms {
-
-
-	class spingrid;
-	class grid_test;
-
 	/**
 	 * 
 	 * Contains data and methods required to play a minesweeper game.
@@ -90,8 +85,6 @@ namespace ms {
 
 
 	private:
-		friend spingrid;
-		friend grid_test;
 		int init(unsigned int row, unsigned int col);
 		int updategamestate();
 		int open__(int row, int col);

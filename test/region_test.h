@@ -46,10 +46,11 @@ TEST_CASE("region: combining operations", "region::unite, region::intersect, reg
     r1.add_cell(rc_coord{1,2});
     r1.add_cell(rc_coord{2,3});
     r1.set_count(1);
+    
     r2.add_cell(rc_coord{1,2});
     r2.add_cell(rc_coord{2,1});
     r2.add_cell(rc_coord{3,2});
-    r1.set_count(1);
+    r2.set_count(1);
     
     r1ur2.add_cell(rc_coord{1,2});
     r1ur2.add_cell(rc_coord{2,3});

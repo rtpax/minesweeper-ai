@@ -461,11 +461,11 @@ namespace ms {
 			for(unsigned col = 0; col < g.width(); ++col) {
 				if(g.get(row,col) == grid::ms_hidden || g.get(row,col) == grid::ms_question) {
 					const region_set::subset_type& regions_at = regions.regions_intersecting(rc_coord(row, col));
-					float probability = regions_at.empty() ? default_prob : 1;
+					float probability = regions_at.empty() ? default_prob : 0;
 					for(region_set::iterator reg : regions_at) {
 						probability = std::max((reg->min() + reg->max()) / (2.f * reg->size()), probability); //pick the worst probability
 					}
-					if(abs(probability - best_prob) < .001) { //close enough in probability
+					if(fabs(probability - best_prob) < .001) { //close enough in probability
 						best_locs.push_back(rc_coord(row,col));
 					} else if(probability < best_prob) {
 						best_locs.clear();

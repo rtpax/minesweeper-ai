@@ -1,14 +1,14 @@
 DEBUG_LEVEL := 0
 
-CXXFLAGS := -O2 -std=c++17 -g
-DEBUG_CXXFLAGS := -O0 -fno-inline -g -std=c++17 -DDEBUG=$(DEBUG_LEVEL)
+CXXFLAGS := -O2 -std=c++17 -g -Wall
+DEBUG_CXXFLAGS := -O0 -fno-inline -g -std=c++17 -Wall -DDEBUG=$(DEBUG_LEVEL)
 CPPFLAGS := -I/c/msys64/mingw64/include
 LDFLAGS := -L/c/msys64/mingw64/libs
 LDLIBS :=
 
-OBJS := grid.o region.o region_set.o solver.o spingrid.o spinoff.o
+OBJS := grid.o region.o region_set.o solver.o
 MAIN_OBJS := main.o $(OBJS)
-TEST_OBJS := ./test.o $(OBJS)
+TEST_OBJS := ./test/test.o $(OBJS)
 DEBUG_OBJS := $(MAIN_OBJS:.o=.debug.o)
 
 all: sweep.exe debug.exe test.exe
@@ -30,11 +30,11 @@ test.exe: $(TEST_OBJS)
 
 %.o: %.cpp
 	g++ -c $(CPPFLAGS) $(CXXFLAGS) $*.cpp -o $*.o
-	g++ -MM $(CPPFLAGS) $(CXXFLAGS) $*.cpp > $*.d
+	g++ -MM $(CPPFLAGS) $(CXXFLAGS) $*.cpp -MT $*.o > $*.d
 
 %.debug.o: %.cpp
 	g++ -c $(CPPFLAGS) $(DEBUG_CXXFLAGS) $*.cpp -o $*.debug.o
-	g++ -MM $(CPPFLAGS) $(DEBUG_CXXFLAGS) $*.cpp > $*.debug.d
+	g++ -MM $(CPPFLAGS) $(DEBUG_CXXFLAGS) $*.cpp -MT $*.debug.o > $*.debug.d
 
 -include $(MAIN_OBJS:.o=.d)
 -include $(TEST_OBJS:.o=.d)

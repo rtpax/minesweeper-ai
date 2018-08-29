@@ -7,58 +7,13 @@ namespace ms {
 
 	/**
 	 * Adds a cell to a region if it is not contained already
-	 * The resulting region is guaranteed to be trim if it was before add_cell was called.
 	 * 
 	 * Return 1 if it adds the cell, 0 otherwise
 	 * 
 	 * Complexity \f$O(log(N))\f$
 	 **/
 	int region::add_cell(rc_coord arg) {
-		iterator it = _cells.lower_bound(arg); //user lower_bound instead of find, use `it` to speed up insertion
-		if(*it == arg) { 
-			return 0;
-		} else {
-			_cells.insert(it, arg); 
-			return 1;
-		}
-	}
-
-	/**
-	 * Removes all repeated cells in a region.
-	 * 
-	 * A cell is guaranteed to be trim after calling trim.
-	 * A cell is trim if it has no repeated cells in a region.
-	 * 
-	 * Returns the number of removed cells.
-	 *
-	 * Complexity \f$\Theta (N^2)\f$
-	 * 
-	 * Note: this function no longer serves any purpose.
-	 * All regions should constantly be trim. This function returns zero;
-	 **/
-	int region::trim() {
-		assert(is_trim());
-		return 0;
-	}
-
-	/**
-	 * Tests whether the region is trim.
-	 * A cell is trim if it has no repeated cells in a region.
-	 * 
-	 * Returns true if the region is trim, false otherwise.
-	 * 
-	 * Complexity \f$O(N^2)\f$
-	 **/
-	bool region::is_trim() const {
-		if(!_cells.empty())
-		for (iterator i = begin(); std::next(i,1) != end(); ++i) {
-			for (iterator j = std::next(i, 1); j != end(); ++j) {
-				if (*i == *j) {
-					return false;
-				}
-			}
-		}
-		return true;
+		return _cells.insert(arg).second;
 	}
 
 	/**
@@ -70,9 +25,6 @@ namespace ms {
 	 * Complexity \f$O(N \cdot log(M))\f$
 	 **/
 	region region::intersect(const region& arg) const {
-		assert(is_trim() && "intersect");
-		assert(arg.is_trim() && "intersect");
-
 		region ret;
 		for (iterator it = begin(); it != end(); ++it) {
 			if(arg.find(*it) != arg.end()) {
@@ -89,52 +41,9 @@ namespace ms {
 			arg._min - std::min<int>(argsubsize, arg._min)
 		);
 
-		if(!ret.is_reasonable()) {
-			debug_printf("{");
-			for(auto i = this->begin(); i != this->end(); ++i)
-				debug_printf("(%u,%u)",i->row,i->col);
-			debug_printf("}\\{");
-			for(auto i = arg.begin(); i != arg.end(); ++i)
-				debug_printf("(%u,%u)",i->row,i->col);
-			debug_printf("} -> {");
-			for(auto i = ret.begin(); i != ret.end(); ++i)
-				debug_printf("(%u,%u)",i->row,i->col);
-			debug_printf("}\n");
-			debug_printf("{%zu : %u - %u}\\{%zu : %u - %u} -> {%zu : %u - %u}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
-		}
-		assert(ret.is_reasonable() && "intersect");
-		assert(ret.is_trim() && "intersect");
-
 		return ret;
 	}
 
-	/* proof of max and min for AUB:
-	 *
-	 *  A\B  A∩B  B\A
-	 * /   \/   \/   \
-	 * AAAAAAAAAA
-	 *      BBBBBBBBBB
-	 *
-	 * P(x) = { 0, x<=0; x, x > 0
-	 *
-	 * Ax* set of bombs in Ax (A with max bombs)
-	 * Bx* set of bombs in Bx
-	 * An* set of bombs in An (A with min bombs)
-	 * Bn* set of bombs in Bn
-	 * Ar (A with real bombs)
-	 *
-	 *                              (max number )   (min number of )
-	 *                              (bombs if no)   (bombs in A∩B  )
-	 *                              (overlap    )   (given Ax = Ar and Bx = Br)
-	 * |(AUB)x*| = |(AxUBx)x*| <=   |Ax*| + |Bx*| - P(|Ax*| - |A\B|)    [Repeat switching A and B]
-	 *
-	 *                             (min number  )     (max number of )
-	 *                             (bombs if all)     (bombs in A∩B. )
-	 *                             (overlap     )     (all place limits)
-	 * |(AUB)n*| = |(AnUBn)n*| >=   |An*| + |Bn*| - min(|A∩B|,|An*|,|Bn*|)
-	 *
-	 *
-	 */
 	/**
 	 * Returns a region with all points in either region (mathematical union: `this` &cup; `arg`).
 	 * Calculates what the union's `max` and `min` number of bombs is. 
@@ -145,9 +54,6 @@ namespace ms {
 	 * Complexity \f$O(M \cdot log(M + N))\f$ where M is the size of `arg` and N is the size of `this`.
 	 **/
 	region region::unite(const region& arg) const {
-		assert(is_trim() && "unite");
-		assert(arg.is_trim() && "unite");
-
 		region ret;
 		ret._cells = _cells;
 		int common = 0;
@@ -156,25 +62,11 @@ namespace ms {
 				++common;
 		}
 
+		//ret.max = sum of bombs - min bombs in intersection (assuming max everywhere)
 		ret._max = std::min<int>(arg._max + _max - std::max<int>(_max - (size() - common), 0),
 			arg._max + _max - std::max<int>(arg._max - (arg.size() - common), 0));
+		//ret.min = sum of bombs - max bombs in intersection (assuming min everywhere)
 		ret._min = arg._min + _min - std::min<int>(std::min<int>(arg._min, _min), common);
-
-		if(!ret.is_reasonable()) {
-			debug_printf("{");
-			for(auto i = this->begin(); i != this->end(); ++i)
-				debug_printf("(%u,%u)",i->row,i->col);
-			debug_printf("}\\{");
-			for(auto i = arg.begin(); i != arg.end(); ++i)
-				debug_printf("(%u,%u)",i->row,i->col);
-			debug_printf("} -> {");
-			for(auto i = ret.begin(); i != ret.end(); ++i)
-				debug_printf("(%u,%u)",i->row,i->col);
-			debug_printf("}\n");
-			debug_printf("{%zu : %u - %u}\\{%zu : %u - %u} -> {%zu : %u - %u}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
-		}
-		assert(ret.is_reasonable() && "unite");
-		assert(ret.is_trim() && "unite");
 
 		return ret;
 	}
@@ -189,9 +81,6 @@ namespace ms {
 	 * Complexity \f$O(M \cdot log(M + N))\f$ where M is the size of `arg` and N is the size of `this`.
 	 **/
 	region region::subtract(const region& arg) const {
-		assert(is_trim() && "subtract");
-		assert(arg.is_trim() && "subtract");
-
 		region ret;
 		ret._cells = _cells;
 
@@ -210,22 +99,6 @@ namespace ms {
 
 		ret._max = std::min<int>(_max - intersect_min_given_max_bombs, ret.size()); 
 		ret._min = _min - intersect_max_given_min_bombs;
-
-		if(!ret.is_reasonable()) {
-			debug_printf("{");
-			for(auto i = this->begin(); i != this->end(); ++i)
-				debug_printf("(%u,%u)",i->row,i->col);
-			debug_printf("}\\{");
-			for(auto i = arg.begin(); i != arg.end(); ++i)
-				debug_printf("(%u,%u)",i->row,i->col);
-			debug_printf("} -> {");
-			for(auto i = ret.begin(); i != ret.end(); ++i)
-				debug_printf("(%u,%u)",i->row,i->col);
-			debug_printf("}\n");
-			debug_printf("{%zu : %u - %u}\\{%zu : %u - %u} -> {%zu : %u - %u}\n", size(), min(), max(), arg.size(), arg.min(), arg.max(), ret.size(), ret.min(), ret.max());
-		}
-		assert(ret.is_reasonable() && "subtract");
-		assert(ret.is_trim() && "subtract");
 
 		return ret;
 	}

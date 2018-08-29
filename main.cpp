@@ -85,7 +85,7 @@ int main() {
             std::cout << opened << " steps taken\n";
         } else if (line == "step") {
             ms::rc_coord opened = ai.step();
-            if(opened != ms::rc_coord{0xffff,0xffff})
+            if(opened != ms::BAD_RC_COORD)
                 std::cout << "solver opened cell (" << opened.row << "," << opened.col << ")\n";
             else
                 std::cout << "no cells opened\n";
@@ -107,7 +107,7 @@ int main() {
 
             if(parse_fail) {
                 ms::rc_coord opened = ai.step_certain();
-                if(opened != ms::rc_coord{0xffff,0xffff})
+                if(opened != ms::BAD_RC_COORD)
                     std::cout << "solver opened cell (" << opened.row << "," << opened.col << ")\n";
                 else
                     std::cout << "no cells opened\n";

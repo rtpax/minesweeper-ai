@@ -68,9 +68,6 @@ PRIORITY: HIGH
         285, function: void ms::region::order_preserve_merge_to(const 
         ms::region&) const
     Date: 8/21/2018
-~   Regions min and max are incorrect after unite/intersect/subtract.
-    See test output
-    Date: 8/28/2018
 
 PRIORITY: MEDIUM
 ~   Program does not exit on Ctrl-C (it used to, no new libraries linked)

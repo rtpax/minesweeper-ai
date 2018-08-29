@@ -61,8 +61,6 @@ namespace ms {
 		int add_cell(rc_coord rc);
 		int remove_bomb(rc_coord bomb);
 		int remove_safe(rc_coord safe);
-		int trim();
-		bool is_trim() const;
 		/** returns true if the combination of max and min is possible with the current size**/
 		bool is_reasonable() const { return min() <= max() && max() <= size(); }
 		/**Returns the number of cells in the region.\n Complexity \f$O(1)\f$.**/
@@ -80,16 +78,6 @@ namespace ms {
 		const_iterator end() const { return _cells.cend(); }
 		iterator find(const rc_coord& rc) { return _cells.find(rc); }
 		const_iterator find(const rc_coord& rc) const { return _cells.find(rc); }
-
-#ifdef DEBUG
-		#define assert_trim(arg) do{ region test = (arg); test.trim(); assert(test == (arg)); }while(0)
-		#define assert_reasonable(arg) do{ assert((arg).min() <= (arg).max() && (arg).max() <= (arg).size()); }while(0)
-		#define assert_nonempty(arg) do{ assert((arg).size() != 0); }while(0)
-#else
-		#define assert_trim(arg)
-		#define assert_reasonable(arg)
-		#define assert_nonempty(arg)
-#endif
 	};
 
 	inline std::ostream& operator<<(std::ostream& os, const region& r) {
