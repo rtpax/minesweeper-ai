@@ -18,9 +18,6 @@ namespace ms {
 
 	/**
 	 * Returns a region with all shared points (mathematical intersection: `this` &cap; `arg`).
-	 * Guaranteed to return a trim region.
-	 * 
-	 * `arg` and `this` MUST be trim.
 	 * 
 	 * Complexity \f$O(N \cdot log(M))\f$
 	 **/
@@ -47,9 +44,6 @@ namespace ms {
 	/**
 	 * Returns a region with all points in either region (mathematical union: `this` &cup; `arg`).
 	 * Calculates what the union's `max` and `min` number of bombs is. 
-	 * Guaranteed to return a trim region.
-	 * 
-	 * `this` and `arg` MUST be trim
 	 * 
 	 * Complexity \f$O(M \cdot log(M + N))\f$ where M is the size of `arg` and N is the size of `this`.
 	 **/
@@ -74,9 +68,6 @@ namespace ms {
 	/**
 	 * Returns a region with all points in the calling region that
 	 * are not in the argument region (mathematical compliment : `this`\\`arg`).
-	 * Guaranteed to return a trim region
-	 *
-	 * `this` and `arg` MUST be trim
 	 * 
 	 * Complexity \f$O(M \cdot log(M + N))\f$ where M is the size of `arg` and N is the size of `this`.
 	 **/
@@ -101,6 +92,38 @@ namespace ms {
 		ret._min = _min - intersect_max_given_min_bombs;
 
 		return ret;
+	}
+
+	/**
+	 * removes all points in the calling region that
+	 * are not in the argument region (mathematical compliment : `this`\\`arg`).
+	 *
+	 * Complexity \f$O(M \cdot log(M + N))\f$ where M is the size of `arg` and N is the size of `this`.
+	 **/
+	region& region::subtract_to(const region& arg) {
+		size_t start_size = size();
+		unsigned start_min = min();
+		unsigned start_max = max();
+
+		for (iterator it = arg.begin(); it != arg.end(); ++it) {
+			remove_safe(*it);
+		}
+		int common = start_size - size();
+		int othersubsize = arg.size() - common;
+
+		int intersect_min_given_max_bombs =  std::max(
+			start_max - std::min<int>(size(), start_max), 
+			arg._min - std::min<int>(othersubsize, arg._min) //we only assume `this` has max bombs
+		);
+
+		int intersect_max_given_min_bombs = std::min<int>(std::min<int>(start_min, arg._max), common); //we only assume `this` has min bombs
+
+		_max = std::min<int>(start_max - intersect_min_given_max_bombs, size()); 
+		_min = start_min - intersect_max_given_min_bombs;
+
+		assert(is_reasonable());
+
+		return *this;
 	}
 
     /**

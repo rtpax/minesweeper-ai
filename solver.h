@@ -61,7 +61,7 @@ namespace ms {
 		int apply_open(rc_coord cell);
 		int apply_flag(rc_coord cell);
 		
-
+		region approx_remain() const;
 
 		int trim_regions();
 

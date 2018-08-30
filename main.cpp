@@ -61,7 +61,7 @@ void printms(const ms::grid& g) {
 }
 
 int main() {
-    ms::solver ai(9,10,20);
+    ms::solver ai(300,300,10000);
 
     std::string line;
     std::string row;

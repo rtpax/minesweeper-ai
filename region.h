@@ -36,10 +36,19 @@ namespace ms {
 		region() { set_count(0); }
 		/**Copy constructor.\n Complexity \f$O(N)\f$. **/
 		region(const region& copy) { _cells = copy._cells; _max = copy._max; _min = copy._min; }
+		/**Move constructor. \n Complexity \f$O(1)\f$. **/
+		region(region&& copy) { _cells = std::move(copy._cells); _max = copy._max; _min = copy._min; }
+
+		/**Copy assignment.\n Complexity \f$O(N)\f$. **/
+		region& operator=(const region& copy) { _cells = copy._cells; _max = copy._max; _min = copy._min; return *this; }
+		/**Move assignment. \n Complexity \f$O(1)\f$. **/
+		region& operator=(region&& copy) { _cells = std::move(copy._cells); _max = copy._max; _min = copy._min; return *this; }
+		
 
 		region intersect(const region& arg) const;
 		region unite(const region& arg) const;
 		region subtract(const region& arg) const;
+		region& subtract_to(const region& arg);
 		region merge(const region& arg) const;
 		region& merge_to(const region& arg);
 

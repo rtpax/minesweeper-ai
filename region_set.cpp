@@ -112,6 +112,7 @@ region_set::iterator region_set::remove(iterator to_remove) {
     modified_regions.erase(to_remove);
     return contents.erase(to_remove);
 }
+
 void region_set::clear() {
     for(unsigned r = 0; r < keys.shape()[0]; ++r) {
         for(unsigned c = 0; c < keys.shape()[1]; ++c) {

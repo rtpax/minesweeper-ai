@@ -7,25 +7,6 @@
 
 namespace ms {
 
-#ifndef NDEBUG
-	#define assert_each_trim() do {\
-		for(region_set::iterator ri = regions.begin(); ri != regions.end(); ++ri) {\
-			assert_trim(*ri);\
-		}\
-	}while(0)
-	#define assert_norepeat() do {\
-		for(region_set::iterator ri = regions.begin(); std::next(ri, 1) != regions.end(); ++ri) {\
-			for(region_set::iterator rj = std::next(ri, 1); rj != regions.end(); ++rj) {\
-				assert((*ri) != *rj);\
-			}\
-		}\
-	}while(0)
-#else
-	#define assert_each_trim()
-	#define assert_norepeat()
-#endif
-
-
 	/**
 	 * Copies grid, all other members default initialize
 	 **/
@@ -117,16 +98,14 @@ namespace ms {
 	 * 
 	 * If `lazy == true` it stops as soon as a cells can be added to the queue
 	 * 
-	 * Complexity of the inner loop \f$\O(N^2)\f$..
-	 * Outer loop's complexity is nontrivial, runs until it has found aux regions (often just one iteration).
+	 * Complexity of the inner loop \f$O(N^2)\f$ where N is the number of regions modified since last time the loop was reached
+	 * Outer loop's complexity is nontrivial, runs until it has found aux regions. Often just one or zero iteration,
+	 * but if there is nothing to be found, there are often around 10-20 (more when more regions).
 	 **/
 	int solver::find_aux_regions(bool lazy) {
 		debug_printf("find_aux_regions [%s]...", lazy?"lazy":"nonlazy");
 		
 		int iterations = 0;
-
-		// using clock = std::chrono::high_resolution_clock;
-		// clock::duration accum1 = std::chrono::seconds(0), accum2 = std::chrono::seconds(0);
 
 		const region_set::subset_type& regions_added = regions.get_modified_regions();
 
@@ -168,9 +147,6 @@ namespace ms {
 		find_aux_regions(true);
 		if(!(safe_queue.empty() && bomb_queue.empty()))
 			return 0;
-
-		//find_chains();
-		//find_leftover();
 		
 		return 1;
 	}
@@ -287,7 +263,6 @@ namespace ms {
 			return 1;
 		default: //multiple cells opened, remove all open cells
 			int ret = 0;
-			debug2_printf("<<");
 			for(unsigned int r = 0; r < g.height(); ++r) {
 				for(unsigned int c = 0; c < g.width(); ++c) {
 					grid::cell curcell = g.get(r,c);
@@ -296,7 +271,6 @@ namespace ms {
 					}
 				}
 			}
-			debug2_printf(">>\n");
 			return ret;	
 		}
 	}
@@ -347,6 +321,49 @@ namespace ms {
 		}
 		safe_queue.push_back(to_add);
 		return 1;
+	}
+
+	region solver::approx_remain() const {
+		region ret_base;
+		for(unsigned r = 0; r < g.height(); ++r) {
+			for(unsigned c = 0; c < g.width(); ++c) {
+				ret_base.add_cell(rc_coord(r,c));
+			}
+		}
+		ret_base.set_count(g.bombs());
+		for(unsigned r = 0; r < g.height(); ++r) {
+			for(unsigned c = 0; c < g.width(); ++c) {
+				switch(g.get(r,c)) {
+				case grid::ms_flag:
+					ret_base.remove_bomb(rc_coord(r,c));
+					break;
+				case grid::ms_hidden:
+				case grid::ms_question:
+					break;
+				default:
+					ret_base.remove_safe(rc_coord(r,c));
+				}
+			}
+		}
+		std::vector<region_set::const_iterator> random_regions;
+		for(region_set::const_iterator it = regions.cbegin(); it != regions.cend(); ++it) {
+			random_regions.push_back(it);
+		}
+		//number of iterations arbitrary, the more iterations the closer to actual results you get
+		region ret;
+		for(int i = 0; i < 10; ++i) {
+			region to_merge = ret_base;
+			std::shuffle(random_regions.begin(), random_regions.end(), rng);
+			for(region_set::iterator it : random_regions) {
+				to_merge.subtract_to(*it);
+			}
+			if(ret.empty()) {
+				ret = to_merge;
+			} else {
+				ret.merge_to(to_merge);
+			}
+		}
+		return ret;
 	}
 
 
@@ -443,19 +460,21 @@ namespace ms {
 	 * Returns the cell opened, or BAD_RC_COORD if none is opened
 	 **/
 	rc_coord solver::step() {
+		debug2_printf(">");
 		if(g.gamestate() != grid::RUNNING && g.gamestate() != grid::NEW) {
 			return BAD_RC_COORD;
 		}
 
 		rc_coord ret = step_certain();
 		if(ret != BAD_RC_COORD) {
-			debug2_printf("certain[%u,%u]\n",ret.row,ret.col);
 			return ret;
 		}
 
+		region remain = approx_remain();
+
 		std::vector<rc_coord> best_locs;
 		float best_prob = 2; //higher than any real probability could be
-		float default_prob = (float) g.bombs() / (g.width() * g.height());
+		float default_prob = (remain.min() + remain.max()) / (2.f * remain.size());
 
 		for(unsigned row = 0; row < g.height(); ++row) {
 			for(unsigned col = 0; col < g.width(); ++col) {
@@ -481,7 +500,6 @@ namespace ms {
 			std::uniform_int_distribution<> uid(0, best_locs.size() - 1);
 			ret = best_locs[uid(rng)];
 			apply_open(ret);
-			debug2_printf("guess[%u,%u]\n",ret.row,ret.col);
 			return ret;
 		}
 		return BAD_RC_COORD;

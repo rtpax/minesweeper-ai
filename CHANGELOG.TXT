@@ -1,3 +1,4 @@
-~   added copy constructor to region_set
-~   made region_set::add throw if !input.is_reasonable
-~   changed name of grid::grid_copy_type to grid::copy_type
+~   added profiling output version in make
+~   added solver::approx_remain to get a good estimate on the likelihood of a
+    cell not near open cells being open
+~   added region::subtract_to to help speed up approx_remain
