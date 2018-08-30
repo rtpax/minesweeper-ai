@@ -162,20 +162,10 @@ namespace ms {
 	int solver::remove_safe(rc_coord cell) {
 		int removed = regions.remove_safe(cell);	
 
-		for(std::deque<rc_coord>::iterator ri = bomb_queue.begin(); ri != bomb_queue.end();) {
-			if(*ri == cell) {
-				ri = bomb_queue.erase(ri);
-			} else {
-				++ri;
-			}
-		}
-		for(std::deque<rc_coord>::iterator ri = safe_queue.begin(); ri != safe_queue.end();) {
-			if(*ri == cell) {
-				ri = safe_queue.erase(ri);
-			} else {
-				++ri;
-			}
-		}
+		auto it = safe_queue.find(cell);
+		if(it != safe_queue.end())
+			safe_queue.erase(it);
+		assert(bomb_queue.find(cell) == bomb_queue.end());
 		
 		return removed;
 	}
@@ -190,26 +180,20 @@ namespace ms {
 	int solver::remove_bomb(rc_coord cell) {
 		int removed = regions.remove_bomb(cell);
 
-		for(std::deque<rc_coord>::iterator ri = bomb_queue.begin(); ri != bomb_queue.end();) {
-			if(*ri == cell) {
-				ri = bomb_queue.erase(ri);
-			} else {
-				++ri;
-			}
-		}
-		for(std::deque<rc_coord>::iterator ri = safe_queue.begin(); ri != safe_queue.end();) {
-			if(*ri == cell) {
-				ri = safe_queue.erase(ri);
-			} else {
-				++ri;
-			}
-		}
-		
+		auto it = bomb_queue.find(cell);
+		if(it != bomb_queue.end())
+			bomb_queue.erase(it);
+		assert(safe_queue.find(cell) == safe_queue.end());
+
 		return removed;
 	}
 
-	int solver::find_leftover() {
-		return 0;
+	rc_coord solver::get_safe_from_queue() const {
+		return *safe_queue.begin();
+	}
+
+	rc_coord solver::get_bomb_from_queue() const {
+		return *bomb_queue.begin();
 	}
 
 	/**
@@ -305,7 +289,7 @@ namespace ms {
 			if(to_add == check)
 				return 0;
 		}
-		bomb_queue.push_back(to_add);
+		bomb_queue.insert(to_add);
 		return 1;
 	}
 
@@ -319,7 +303,7 @@ namespace ms {
 			if(to_add == check)
 				return 0;
 		}
-		safe_queue.push_back(to_add);
+		safe_queue.insert(to_add);
 		return 1;
 	}
 
@@ -398,7 +382,7 @@ namespace ms {
 		}
 
 		if(!bomb_queue.empty()) {
-			rc_coord ret = bomb_queue.front();
+			rc_coord ret = get_bomb_from_queue();
 			int err = apply_flag(ret);
 			(void) err; //suppress unused warnings
 			debug_printf("bomb_queue:\n");
@@ -416,7 +400,7 @@ namespace ms {
 			assert(err == 0);
 			return ret;
 		} else if(!safe_queue.empty()) {
-			rc_coord ret = safe_queue.front();
+			rc_coord ret = get_safe_from_queue();
 			if(g.get(ret.row,ret.col)!=grid::ms_hidden) {
 				//TODO find bug where this code was reached
 				debug_printf("cell:%d\nrow:%u\ncol:%u\n",g.get(ret.row,ret.col),ret.row,ret.col);

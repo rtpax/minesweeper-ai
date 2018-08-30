@@ -2,7 +2,6 @@
 #define MS_SOLVER_H
 
 #include <vector>
-#include <deque>
 #include <set>
 #include <list>
 #include <cassert>
@@ -51,11 +50,13 @@ namespace ms {
 
 		grid g;
 		region_set regions;
-		std::deque<rc_coord> safe_queue;
-		std::deque<rc_coord> bomb_queue;
+		std::unordered_set<rc_coord, rc_coord_hash> safe_queue;
+		std::unordered_set<rc_coord, rc_coord_hash> bomb_queue;
 
 		int remove_safe(rc_coord cell);
 		int remove_bomb(rc_coord cell);
+		rc_coord get_safe_from_queue() const;
+		rc_coord get_bomb_from_queue() const;
 
 		int clear_queue();
 		int apply_open(rc_coord cell);
@@ -68,9 +69,6 @@ namespace ms {
 		int find_regions();
 		int find_base_regions();
 		int find_aux_regions(bool lazy);
-		int find_ext_aux_regions();
-		int find_chains();
-		int find_leftover();
 
 		int fill_queue();
 		int add_to_safe_queue(rc_coord to_add);

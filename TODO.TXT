@@ -76,9 +76,10 @@ PRIORITY: HIGH
     Date: 8/21/2018
 ~   Segfault when trying to solve very large grid. Bug occurred consistently with size
         ms::solver ai(272,330,4800);
-    Error in grid.cpp at line 29 with contents
+    Error in grid.cpp at line 29 with contents 
         if (!(rr == 0 && cc == 0) && iscontained(row + rr, col + cc)) {
     according to gdb
+    Update: stackdump says stackoverflow
     Date: 8/30/2018
 
 PRIORITY: MEDIUM

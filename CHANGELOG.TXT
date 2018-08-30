@@ -1,4 +1,4 @@
-~   added profiling output version in make
-~   added solver::approx_remain to get a good estimate on the likelihood of a
-    cell not near open cells being open
-~   added region::subtract_to to help speed up approx_remain
+~   detected bottleneck in solver::remove_safe/bomb
+~   changed safe/bomb_queue to use unordered set
+~   added rc_coord_hash
+~   approx 5-6x increase in speed
