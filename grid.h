@@ -72,7 +72,7 @@ namespace ms {
 		 * Used for passing into `grid`'s copy constructor. Indicates how it should be copied.
 		 * 
 		 **/
-		enum grid_copy_type {
+		enum copy_type {
 			/**Only copy the visible contents of the grid. Any reference to an underlying grid in this copy is meaningless. **/
 			SURFACE_COPY, 
 			/**Make an exact copy of the input grid.**/
@@ -102,7 +102,7 @@ namespace ms {
 	public:
 		grid(unsigned int height, unsigned int width, unsigned int bombs);
 		grid(unsigned int height, unsigned int width, cell ** arr);
-		grid(const grid& copy, grid_copy_type gct);
+		grid(const grid& copy, copy_type gct);
 
 		unsigned int width() const { return _width; }
 		unsigned int height() const { return _height; }

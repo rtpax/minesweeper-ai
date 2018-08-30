@@ -1,6 +1,3 @@
-~   Fixed autodependency target names for *.debug.o and test/test.o (and returned test to original spot at ./test/test.cpp)
-~   Removed obsolete trim and assert methods in ms::region
-~   fixed bug in region_test.h (set count on same region twice, rather than each once)
-~   added -Wall flag
-~   fixed bug in solver step (abs instead of fabs for floating, caused bad truncation)
-~   removed spingrid and spinoff (finally)
+~   added copy constructor to region_set
+~   made region_set::add throw if !input.is_reasonable
+~   changed name of grid::grid_copy_type to grid::copy_type

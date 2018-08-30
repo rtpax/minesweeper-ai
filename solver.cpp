@@ -29,7 +29,7 @@ namespace ms {
 	/**
 	 * Copies grid, all other members default initialize
 	 **/
-	solver::solver(const grid& start) : g(start, grid::FULL_COPY), regions(g.height(), g.width()) {	}
+	solver::solver(const grid& start, grid::copy_type gct) : g(start, gct), regions(g.height(), g.width()) {	}
 
 	/**
 	 * Initializes the internal grid with the given parameters

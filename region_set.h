@@ -9,6 +9,8 @@
 
 namespace ms {
 
+class bad_region_error : std::logic_error { using std::logic_error::logic_error; };
+
 /**
  * lexicographically compare cells in a region
  * 
@@ -24,7 +26,11 @@ struct region_cmp_no_min_max {
 };
 
 struct region_iter_hash {
-    std::size_t operator()(const std::set<region, region_cmp_no_min_max>::iterator& arg) const {
+    std::size_t operator()(const std::set<region, region_cmp_no_min_max>::const_iterator& arg) const {
+        std::hash<const region*> my_hash;
+        return my_hash(&(*arg));
+    }
+    std::size_t operator()(const std::set<region, region_cmp_no_min_max>::const_reverse_iterator& arg) const {
         std::hash<const region*> my_hash;
         return my_hash(&(*arg));
     }
@@ -44,6 +50,7 @@ public:
 
 
     region_set(unsigned height, unsigned width);
+    region_set(const region_set& copy);
 
     std::pair<iterator,bool> add(const region&);
     iterator remove(iterator);

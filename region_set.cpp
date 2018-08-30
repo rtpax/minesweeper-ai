@@ -2,8 +2,35 @@
 
 namespace ms {
 
-
+/**
+ * Initializes a region_set with keys for the given dimensions
+ * 
+ * attempting to add a region outside of these bounds is an error
+ **/
 region_set::region_set(unsigned height, unsigned width) : keys(boost::extents[height][width]) {}
+
+/**
+ * copies a region_set, including contents, keys, and modified regions
+ * 
+ * Complexity \f$O(N)\f$
+ **/
+region_set::region_set(const region_set& copy) : keys(boost::extents[copy.keys.shape()[0]][copy.keys.shape()[1]]) {
+    contents = copy.contents;
+    for(iterator it = contents.begin(); it != contents.end(); ++it) {
+        for(rc_coord cell : *it) {
+            keys[cell.row][cell.col].insert(it);
+        }
+    }
+    const_iterator this_it = cbegin();
+    const_iterator copy_it = copy.cbegin();
+    assert(size() == copy.size());
+    //equivalent regions should be in the same order
+    for(; copy_it != copy.cend(); ++this_it, ++copy_it) {
+        if(copy.modified_regions.find(copy_it) != copy.modified_regions.cend()) { //if *copy_it was modified
+            modified_regions.insert(this_it);
+        }
+    }
+}
 
 /**
  * Adds a region to the list of regions, merging if a region already exists covering the same area.
@@ -16,6 +43,10 @@ region_set::region_set(unsigned height, unsigned width) : keys(boost::extents[he
  * Complexity \f$O(N)\f$
  **/
 std::pair<region_set::iterator,bool> region_set::add(const region& to_add) {
+    if(!to_add.is_reasonable()) {
+        throw bad_region_error("attempted to add invalid region");
+    }
+
     typedef std::pair<iterator, bool> ret_type;
 
     if(!to_add.is_helpful()) {

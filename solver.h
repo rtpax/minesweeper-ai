@@ -28,7 +28,7 @@ namespace ms {
 	 **/
 	class solver {
 	public:
-		solver(const grid& g);
+		solver(const grid& g, grid::copy_type gct = grid::FULL_COPY);
 		solver(unsigned int height, unsigned int width, unsigned int bombs);
 		
 		int solve();

@@ -126,7 +126,7 @@ namespace ms {
 		_gs = NEW;
 	}
 
-	grid::grid(const grid& copy, grid_copy_type gct) {
+	grid::grid(const grid& copy, copy_type gct) {
 
 		allocate__(copy._height,copy._width,copy._bombs);
 
