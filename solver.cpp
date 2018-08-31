@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <iostream>
 #include <chrono>
+#include <boost/math/special_functions/factorials.hpp>
 #include "solver.h"
 #include "debug.h"
 
@@ -10,12 +11,20 @@ namespace ms {
 	/**
 	 * Copies grid, all other members default initialize
 	 **/
-	solver::solver(const grid& start, grid::copy_type gct) : g(start, gct), regions(g.height(), g.width()) {	}
+	solver::solver(const grid& start, grid::copy_type gct) : 
+		g(start, gct), regions(g.height(), g.width()) {	}
 
 	/**
 	 * Initializes the internal grid with the given parameters
 	 **/
-	solver::solver(unsigned int height, unsigned int width, unsigned int bombs) : g(height,width,bombs), regions(height, width) { }
+	solver::solver(unsigned int height, unsigned int width, unsigned int bombs) : 
+		g(height,width,bombs), regions(height, width) { }
+
+	/**
+	 * Copies all contents of solver, copies grid with the given copy type
+	 **/
+	solver::solver(const solver& copy, grid::copy_type gct) : 
+		g(copy.g, gct), regions(copy.regions) {}
 
 	/**
 	 * Find the areas around each number where there could be bombs.
@@ -239,7 +248,7 @@ namespace ms {
 	int solver::apply_open(rc_coord arg) {
 		switch(g.open(arg.row, arg.col)) {
 		case -1:
-			throw std::invalid_argument("Could not open the cell");
+			throw bad_region_error("Could not open cell (" + std::to_string(arg.row) + "," + std::to_string(arg.col) + ")");
 		case 0:
 			return 0;
 		case 1:
@@ -350,6 +359,53 @@ namespace ms {
 		return ret;
 	}
 
+	float solver::expected_payout(rc_coord cell) const {
+		using boost::math::factorial;
+
+		float payout[9] = { 0 };
+		float permutations[9] = { 0 };
+		region new_base;
+		for(int r = -1; r <= 1; ++r) {
+			for(int c = -1; c <= 1; ++c) {
+				if((c != 0 || r != 0) && g.iscontained(cell.row + r, cell.col + c)) {
+					grid::cell value = g.get(cell.row + r, cell.col + c);
+					if(value == grid::ms_hidden || value == grid::ms_question)
+						new_base.add_cell(rc_coord(cell.row + r, cell.col + c));
+				}
+			}
+		}
+		for(unsigned count = 0; count <= 8; ++count) {
+			if(new_base.size() >= count) {
+				new_base.set_count(count);
+				try {
+					solver test(*this, grid::SURFACE_COPY);
+					test.apply_open(cell);
+					test.regions.add(new_base);
+					test.find_aux_regions(false);
+					payout[count] += test.safe_queue.size() + test.bomb_queue.size() / 1.5f; //opening safe cells is worth a bit more than flagging cells
+					permutations[count] = factorial<float>(new_base.size()) / factorial<float>(new_base.size() - count);
+				} catch (const bad_region_error& e) {
+					goto else_bad_count;
+				}
+			} else {
+			else_bad_count:
+				payout[count] = 0;
+				permutations[count] = 0;
+			}
+		}
+		float num = 0;
+		int den = 0;
+		for(unsigned count = 0; count <= 8; ++count) {
+			num += payout[count] * permutations[count];
+			den += permutations[count];
+		}
+		if(den == 0) {
+			return -1;
+		} else {
+			return num / den;
+		}
+	}
+
 
 	/**
 	 * Runs until the next step is not guaranteed to succeed.
@@ -445,9 +501,16 @@ namespace ms {
 	 **/
 	rc_coord solver::step() {
 		debug2_printf(">");
-		if(g.gamestate() != grid::RUNNING && g.gamestate() != grid::NEW) {
+		if(g.gamestate() == grid::NEW) {
+			std::uniform_int_distribution<> uid_row(0, g.height() - 1);
+			std::uniform_int_distribution<> uid_col(0, g.width() - 1);
+			rc_coord cell(uid_row(rng), uid_col(rng));
+			apply_open(cell);
+			return cell;
+		} else if(g.gamestate() != grid::RUNNING) {
 			return BAD_RC_COORD;
 		}
+
 
 		rc_coord ret = step_certain();
 		if(ret != BAD_RC_COORD) {
@@ -479,10 +542,31 @@ namespace ms {
 			}
 		}
 
+		std::vector<rc_coord> payout_locs;
+		float best_payout = 0;
+		if(best_locs.size() > 1) {//since if 1 there is nothing to decide
+			for(rc_coord cell : best_locs) {
+				float payout = expected_payout(cell);
+				if(fabs(best_payout - payout) < .001) {
+					payout_locs.push_back(cell);
+				} else if (payout >= best_payout) {
+					payout_locs.clear();
+					payout_locs.push_back(cell);
+					best_payout = payout;
+				} else if (payout < 0) {
+					int err = apply_flag(cell);
+					(void) err; //suppress unused warnings
+					assert(err == 0);
+					return cell;
+				}
+			}
+		} else {
+			payout_locs = best_locs;
+		}
 
-		if(!best_locs.empty()) {
-			std::uniform_int_distribution<> uid(0, best_locs.size() - 1);
-			ret = best_locs[uid(rng)];
+		if(!payout_locs.empty()) {
+			std::uniform_int_distribution<> uid(0, payout_locs.size() - 1);
+			ret = payout_locs[uid(rng)];
 			apply_open(ret);
 			return ret;
 		}

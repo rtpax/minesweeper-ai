@@ -6,17 +6,13 @@
 
 namespace ms {
 	/**
-	 * 
 	 * Contains data and methods required to play a minesweeper game.
-	 * 
 	 **/
 	class grid {
 	public:
 
 		/**
-		 * 
 		 * `cell`s hold the values of individual cells of grids.
-		 * 
 		 **/
 		enum  cell : char {
 			/**0 bombs surround this cell and this cell is not a bomb**/
@@ -52,9 +48,7 @@ namespace ms {
 		};
 
 		/**
-		 * 
 		 * `gamestate` indicates the progress of a grid in its game
-		 * 
 		 **/
 		enum gamestate {
 			/**No bombs are open, some but not all non-bomb cells are open**/ 
@@ -68,12 +62,10 @@ namespace ms {
 		};
 
 		/**
-		 * 
 		 * Used for passing into `grid`'s copy constructor. Indicates how it should be copied.
-		 * 
 		 **/
 		enum copy_type {
-			/**Only copy the visible contents of the grid. Any reference to an underlying grid in this copy is meaningless. **/
+			/**Only copy the visible contents of the grid. All underlying values are ms_error. **/
 			SURFACE_COPY, 
 			/**Make an exact copy of the input grid.**/
 			FULL_COPY, 

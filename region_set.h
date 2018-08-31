@@ -9,8 +9,6 @@
 
 namespace ms {
 
-class bad_region_error : std::logic_error { using std::logic_error::logic_error; };
-
 /**
  * lexicographically compare cells in a region
  * 

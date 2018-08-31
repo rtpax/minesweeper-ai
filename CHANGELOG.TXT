@@ -1,4 +1,8 @@
-~   detected bottleneck in solver::remove_safe/bomb
-~   changed safe/bomb_queue to use unordered set
-~   added rc_coord_hash
-~   approx 5-6x increase in speed
+~   added command line input to set the grid parameters
+~   expanded use of exceptions
+~   added function solver::expected_payout to help decide which cell is best to pick
+~   implemented expected_payout in step (used as tie breaker)
+~   changed grid SURFACE_COPY to make underlying cells ms_error
+~   added try catch around whole main to help debug bad_region_errors
+~   added rc_coord and region to_string methods
+~   added constructor to solver to copy another solver with grid::copy_type

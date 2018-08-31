@@ -44,7 +44,7 @@ region_set::region_set(const region_set& copy) : keys(boost::extents[copy.keys.s
  **/
 std::pair<region_set::iterator,bool> region_set::add(const region& to_add) {
     if(!to_add.is_reasonable()) {
-        throw bad_region_error("attempted to add invalid region");
+        throw bad_region_error("attempted to add invalid region: " + to_add.to_string());
     }
 
     typedef std::pair<iterator, bool> ret_type;
@@ -57,14 +57,9 @@ std::pair<region_set::iterator,bool> region_set::add(const region& to_add) {
     bool did_add = false;
     iterator similar = contents.lower_bound(to_add);
 
-    region before_merge;
     if(!to_add.is_reasonable()) {
-        debug_printf("!to_add.is_reasonable()\n");
-        debug_printf("to_add: "); debug_print_region(to_add);
-        debug_printf("before merge: "); debug_print_region(to_add);
-        exit(1);
+        throw bad_region_error("adding region to region_set that fails is_reasonable(): " + to_add.to_string());
     }
-    assert(to_add.is_reasonable());
 
     if(similar == contents.end() || !similar->samearea(to_add)) {
         auto added_info = contents.insert(to_add);
@@ -75,7 +70,6 @@ std::pair<region_set::iterator,bool> region_set::add(const region& to_add) {
             keys[cell.row][cell.col].insert(added);
         }
     } else {
-        before_merge = *similar;
         did_add = similar->min() < to_add.min() || similar->max() > to_add.max();
         order_preserve_merge(similar, to_add);
         added = similar;
@@ -86,11 +80,7 @@ std::pair<region_set::iterator,bool> region_set::add(const region& to_add) {
     }
 
     if(!added->is_reasonable()) {
-        debug_printf("!added->is_reasonable()\n");
-        debug_printf("to_add: "); debug_print_region(to_add);
-        debug_printf("\nbefore merge: "); debug_print_region(before_merge);
-        debug_printf("\nafter merge: "); debug_print_region(*added);
-        exit(1);
+        throw bad_region_error("adding region to region_set resulted in failing is_reasonable(): " + added->to_string());
     }
     assert(added->is_reasonable());
     return ret_type(added, did_add);
@@ -158,8 +148,11 @@ int region_set::remove_safe(rc_coord cell) {
     while(!key.empty()) {
         key_type::iterator it = key.begin();
         region replace = **it;
-        int err = replace.remove_safe(cell);
-        (void) err; assert(err != 2 && "attempted to remove safe from region with no safe cells");
+        try {
+            replace.remove_safe(cell);
+        } catch (const bad_region_error& e) {
+            throw bad_region_error("could not remove safe cell " + cell.to_string() + " from region_set");
+        }
         replacements.push_back(std::move(replace));
         remove(*it);
         ++removed;
@@ -177,8 +170,12 @@ int region_set::remove_bomb(rc_coord cell) {
     while(!key.empty()) {
         key_type::iterator it = key.begin();
         region replace = **it;
-        int err = replace.remove_bomb(cell);
-        (void) err; assert(err != 2 && "attempted to remove bomb from region with no bomb cells");
+        try {
+            replace.remove_bomb(cell);
+        } catch (const bad_region_error& e) {
+            throw bad_region_error("could not remove bomb cell from region_set");
+        }
+
         replacements.push_back(std::move(replace));
         remove(*it);
         ++removed;

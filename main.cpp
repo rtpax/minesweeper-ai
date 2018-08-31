@@ -60,8 +60,26 @@ void printms(const ms::grid& g) {
     printf("  \n");
 }
 
-int main() {
-    ms::solver ai(300,300,10000);
+int main(int argc, char ** argv) { try {
+    std::cout << time(NULL) << "\n";
+    int height = 0, width = 0, bombs = 0;
+
+    if(argc > 3) {
+        try {
+            height = std::stoi(argv[1]);
+            width  = std::stoi(argv[2]);
+            bombs  = std::stoi(argv[3]);
+        } catch (std::exception) {
+            goto bad_arguments;
+        }
+    } else {
+    bad_arguments:
+        height = 9;
+        width = 9;
+        bombs = 10;
+    }
+
+    ms::solver ai(height, width, bombs);
 
     std::string line;
     std::string row;
@@ -69,8 +87,6 @@ int main() {
 
 
     while(ai.view_grid().gamestate() == ms::grid::RUNNING || ai.view_grid().gamestate() == ms::grid::NEW) {
-        //printms(ai.view_grid());
-
         std::cout << "enter input of the form 'row, column':\n";
 
         std::getline(std::cin, line);
@@ -142,5 +158,8 @@ int main() {
     }
 
     return 0;
-}
+} catch(const ms::bad_region_error& e) {
+    std::cerr << e.what();
+    return 1;
+}}
 

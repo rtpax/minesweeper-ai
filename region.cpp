@@ -19,6 +19,8 @@ namespace ms {
 	/**
 	 * Returns a region with all shared points (mathematical intersection: `this` &cap; `arg`).
 	 * 
+	 * Throws bad_region_error if the resulting region fails is_reasonable()
+	 * 
 	 * Complexity \f$O(N \cdot log(M))\f$
 	 **/
 	region region::intersect(const region& arg) const {
@@ -38,12 +40,18 @@ namespace ms {
 			arg._min - std::min<int>(argsubsize, arg._min)
 		);
 
+		if(!is_reasonable()) {
+			throw bad_region_error("region intersection fails is_reasonable()");
+		}
+
 		return ret;
 	}
 
 	/**
 	 * Returns a region with all points in either region (mathematical union: `this` &cup; `arg`).
 	 * Calculates what the union's `max` and `min` number of bombs is. 
+	 * 
+	 * Throws bad_region_error if the resulting region fails is_reasonable()
 	 * 
 	 * Complexity \f$O(M \cdot log(M + N))\f$ where M is the size of `arg` and N is the size of `this`.
 	 **/
@@ -62,12 +70,18 @@ namespace ms {
 		//ret.min = sum of bombs - max bombs in intersection (assuming min everywhere)
 		ret._min = arg._min + _min - std::min<int>(std::min<int>(arg._min, _min), common);
 
+		if(!is_reasonable()) {
+			throw bad_region_error("region union fails is_reasonable()");
+		}
+
 		return ret;
 	}
 
 	/**
 	 * Returns a region with all points in the calling region that
 	 * are not in the argument region (mathematical compliment : `this`\\`arg`).
+	 * 
+	 * Throws bad_region_error if the resulting region fails is_reasonable()
 	 * 
 	 * Complexity \f$O(M \cdot log(M + N))\f$ where M is the size of `arg` and N is the size of `this`.
 	 **/
@@ -91,12 +105,18 @@ namespace ms {
 		ret._max = std::min<int>(_max - intersect_min_given_max_bombs, ret.size()); 
 		ret._min = _min - intersect_max_given_min_bombs;
 
+		if(!is_reasonable()) {
+			throw bad_region_error("region subtraction fails is_reasonable()");
+		}
+
 		return ret;
 	}
 
 	/**
 	 * removes all points in the calling region that
 	 * are not in the argument region (mathematical compliment : `this`\\`arg`).
+	 * 
+	 * Throws bad_region_error if the resulting region fails is_reasonable(), but subtraction still occurs
 	 *
 	 * Complexity \f$O(M \cdot log(M + N))\f$ where M is the size of `arg` and N is the size of `this`.
 	 **/
@@ -104,6 +124,7 @@ namespace ms {
 		size_t start_size = size();
 		unsigned start_min = min();
 		unsigned start_max = max();
+		set_count(0);//so that remove_safe does not throw
 
 		for (iterator it = arg.begin(); it != arg.end(); ++it) {
 			remove_safe(*it);
@@ -121,7 +142,9 @@ namespace ms {
 		_max = std::min<int>(start_max - intersect_min_given_max_bombs, size()); 
 		_min = start_min - intersect_max_given_min_bombs;
 
-		assert(is_reasonable());
+		if(!is_reasonable()) {
+			throw bad_region_error("region subtract_to fails is_reasonable()");
+		}
 
 		return *this;
 	}
@@ -132,6 +155,8 @@ namespace ms {
 	 * (`max` = the smaller max, `min` = the larger min).
 	 * Otherwise returns an empty region
 	 * 
+	 * Throws bad_region_error if the resulting region fails is_reasonable(), but subtraction still occurs
+	 * 
 	 * Complexity \f$O(log(N))\f$ if they cannot merge, \f$O(N)\f$ if they can merge
 	 **/
 	region region::merge(const region& arg) const {
@@ -141,12 +166,16 @@ namespace ms {
 			ret._max = std::min(_max, arg._max);
 			ret._min = std::max(_min, arg._min);
 		}
-		assert(ret.is_reasonable());
+		if(!is_reasonable()) {
+			throw bad_region_error("region merge fails is_reasonable()");
+		}
 		return ret;
 	}
 
 	/**
 	 * Merges a region with another region that covers the same area
+	 * 
+	 * Throws bad_region_error if the resulting region fails is_reasonable(), but subtraction still occurs
 	 * 
 	 * Complexity \f$O(1)\f$
 	 * 
@@ -158,7 +187,9 @@ namespace ms {
 			_max = arg.max();
 		if(_min < arg._min)
 			_min = arg.min();
-		assert(is_reasonable());
+		if(!is_reasonable()) {
+			throw bad_region_error("region merge_to fails is_reasonable()");
+		}
 		return *this;
 	}
 
@@ -166,7 +197,7 @@ namespace ms {
 	 * removes a cell at the specified location treating it as a bomb:
 	 * decreases min and max by 1, removes from the region, and returns 0
 	 * if bomb is not contained in the region, do nothing and return 1
-	 * if bomb is located in the region, but the region has no bombs (max of 0) return 2, but still remove
+	 * if bomb is located in the region, but the region has no bombs throw bad_region_error, but still remove
 	 * 
 	 * Complexity \f$O(log(N))\f$
 	 **/
@@ -183,7 +214,7 @@ namespace ms {
 				if(_max != 0)
 					--_max;
 				else
-					return 2;
+					throw bad_region_error("could not remove bomb from region with no bombs");
 
 				return 0;
 		}
@@ -193,7 +224,7 @@ namespace ms {
 	 * removes a cell at the specified location treating it as a non bomb
 	 * removes from _cells, and returns 0
 	 * if safe is not contained in the region, do nothing and return 1
-	 * if safe is located in the region, but there are no safe spaces (min == size), remove the cell but return 2;
+	 * if safe is located in the region, but there are no safe spaces (min == size), remove the cell but throw bad_region_error
 	 * 
 	 * Complexity \f$O(log(N))\f$
 	 **/
@@ -209,7 +240,7 @@ namespace ms {
 				_max = size();
 			if(_min > _max) { //implies _min > size()
 				_min = _max;
-				return 2;
+				throw bad_region_error("could not remove safe from region with no safe cells");
 			}
 			return 0;
 		}
@@ -244,6 +275,8 @@ namespace ms {
 	 * Checks if the cell gives any useful information about the number of bombs.
 	 * 
 	 * Returns false if min/max can be inferred from size, true if they cannot
+	 * 
+	 * Complexity \f$O(1)\f$
 	 **/
 	bool region::is_helpful() const {
 		return !(size() == max() && min() == 0);//size == 0 evaluates to false for valid regions

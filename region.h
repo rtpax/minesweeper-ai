@@ -15,6 +15,8 @@ namespace ms {
 	class region_set;
 	class region_cmp_no_min_max;
 
+	class bad_region_error : public std::logic_error { using std::logic_error::logic_error; };
+
 	struct region {
 	private:
 		friend region_set;
@@ -87,18 +89,24 @@ namespace ms {
 		const_iterator end() const { return _cells.cend(); }
 		iterator find(const rc_coord& rc) { return _cells.find(rc); }
 		const_iterator find(const rc_coord& rc) const { return _cells.find(rc); }
+
+		std::string to_string() const {
+			std::string ret;
+			ret += "{ [" + std::to_string(size()) + "|" + std::to_string(min()) + "-" + std::to_string(max()) + "] ";
+			if(!empty()) {
+				auto it = begin();
+				for(; std::next(it) != end(); ++it) {
+					ret += it->to_string() + ",";
+				}
+				ret += it->to_string();
+			}
+			return ret + " }";
+
+		}
 	};
 
 	inline std::ostream& operator<<(std::ostream& os, const region& r) {
-		os << "{ [" << r.size() << "|" << r.min() << "-" << r.max()  << "] ";
-		if(!r.empty()) {
-			auto it = r.begin();
-			for(; std::next(it) != r.end(); ++it) {
-				os << *it << ",";
-			}
-			os << *it;
-		}
-		return os << " }";
+		return os << r.to_string();
 	}
 
 	/**Print information about rc_coord iff `debug_print`ing is enabled**/

@@ -27,13 +27,17 @@ struct rc_coord {
             return row < comp.row;
         return col < comp.col;
     }
+
+    std::string to_string() const {
+        return "(" + std::to_string(row) + "," + std::to_string(col) + ")";
+    }
 };
 
 /**indicates a bad value for an rc_coord, such as when searching for an rc_coord but none is found**/
 inline constexpr rc_coord BAD_RC_COORD{ std::numeric_limits<unsigned>::max(), std::numeric_limits<unsigned>::max() };
-	
+
 inline std::ostream& operator<<(std::ostream& os, const rc_coord& rc) {
-    return os << "(" << rc.row << "," << rc.col << ")";
+    return os << rc.to_string();
 }
 
 struct rc_coord_hash {

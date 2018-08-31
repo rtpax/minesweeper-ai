@@ -27,6 +27,7 @@ namespace ms {
 	 **/
 	class solver {
 	public:
+		solver(const solver& copy, grid::copy_type gct);
 		solver(const grid& g, grid::copy_type gct = grid::FULL_COPY);
 		solver(unsigned int height, unsigned int width, unsigned int bombs);
 		
@@ -63,6 +64,7 @@ namespace ms {
 		int apply_flag(rc_coord cell);
 		
 		region approx_remain() const;
+		float expected_payout(rc_coord cell) const;
 
 		int trim_regions();
 
