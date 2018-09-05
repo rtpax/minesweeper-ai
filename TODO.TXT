@@ -84,6 +84,9 @@ PRIORITY: HIGH
         if (!(rr == 0 && cc == 0) && iscontained(row + rr, col + cc)) {
     according to gdb
     Update: stackdump says stackoverflow
+    Update: it's not about size, I can do grids as large as 1000,1000 with no segfault
+            backtrace has repeated calls to grid::open__, alternating between the two recursive
+            call points
     Date: 8/30/2018
 
 PRIORITY: MEDIUM

@@ -112,14 +112,14 @@ namespace ms {
 	 * but if there is nothing to be found, there are often around 10-20 (more when more regions).
 	 **/
 	int solver::find_aux_regions(bool lazy) {
-		debug_printf("find_aux_regions [%s]...", lazy?"lazy":"nonlazy");
+		dbg::cout << "find_aux_regions [" <<  (lazy?"lazy":"nonlazy") << "]...";
 		
 		int iterations = 0;
 
 		const region_set::subset_type& regions_added = regions.get_modified_regions();
 
 		while (!regions_added.empty()) { //loops as long as something was added
-			debug2_printf("[%zu/%zu]", regions_added.size(), regions.size());
+			dbg::cout2 << "[" << regions_added.size() << "," << regions.size() << "]";
 
 			if(lazy && fill_queue())
 				break;
@@ -127,7 +127,7 @@ namespace ms {
 			std::vector<region> region_queue;
 
 			for(auto ri = regions_added.begin(); ri != regions_added.end(); ++ri) {
-				debug2_printf(".");
+				dbg::cout2 << ".";
 				region_set::subset_type overlaps = regions.regions_intersecting(**ri);
 				
 				for(auto rj = overlaps.begin(); rj != overlaps.end(); ++rj) {
@@ -138,15 +138,15 @@ namespace ms {
 					region_queue.push_back((*rj)->subtract(**ri));
 				}
 			}
-			debug2_printf("*");
+			dbg::cout2 << "*";
 			regions.reset_modified_regions();
 			for(region& to_add : region_queue) {
 				regions.add(to_add);
 			}
 			++iterations;
 		}
-		debug2_printf("\n");
-		debug_printf("done\n");
+		dbg::cout2 << "\n";
+		dbg::cout << "done\n";
 		return iterations;
 	}
 
@@ -439,40 +439,19 @@ namespace ms {
 
 		if(!bomb_queue.empty()) {
 			rc_coord ret = get_bomb_from_queue();
-			int err = apply_flag(ret);
-			(void) err; //suppress unused warnings
-			debug_printf("bomb_queue:\n");
-			for(rc_coord bomb : bomb_queue) {
-				debug_printf("    ");
-				debug_print_rc_coord(bomb);
-				debug_printf("\n");
-			}
-			debug_printf("safe_queue:\n");
-			for(rc_coord safe : safe_queue) {
-				debug_printf("    ");
-				debug_print_rc_coord(safe);
-				debug_printf("\n");
-			}
-			assert(err == 0);
+			apply_flag(ret);
+			dbg::cout << "flagged: " << ret << "\n";
 			return ret;
 		} else if(!safe_queue.empty()) {
 			rc_coord ret = get_safe_from_queue();
 			if(g.get(ret.row,ret.col)!=grid::ms_hidden) {
-				//TODO find bug where this code was reached
-				debug_printf("cell:%d\nrow:%u\ncol:%u\n",g.get(ret.row,ret.col),ret.row,ret.col);
 				throw std::logic_error("Attempting to open a non-hidden cell");
 			}
 			int open_status = apply_open(ret);//removes ret
 			if(!(open_status > 0)) {
-				debug_printf("cells opened: %hhu\nrow:%u\ncol:%u\n",open_status,ret.row,ret.col);
 				throw std::logic_error("Opened the wrong number of cells");
 			}
-			debug_printf("safe_queue:\n");
-			for(rc_coord safe : safe_queue) {
-				debug_printf("    ");
-				debug_print_rc_coord(safe);
-				debug_printf("\n");
-			}
+			dbg::cout << "opened: " << ret << "\n";
 			return ret;
 		} else {
 			return BAD_RC_COORD;
@@ -500,7 +479,7 @@ namespace ms {
 	 * Returns the cell opened, or BAD_RC_COORD if none is opened
 	 **/
 	rc_coord solver::step() {
-		debug2_printf(">");
+		dbg::cout2 << ">";
 		if(g.gamestate() == grid::NEW) {
 			std::uniform_int_distribution<> uid_row(0, g.height() - 1);
 			std::uniform_int_distribution<> uid_col(0, g.width() - 1);
@@ -522,6 +501,7 @@ namespace ms {
 		std::vector<rc_coord> best_locs;
 		float best_prob = 2; //higher than any real probability could be
 		float default_prob = (remain.min() + remain.max()) / (2.f * remain.size());
+		constexpr float threshhold = .001;
 
 		for(unsigned row = 0; row < g.height(); ++row) {
 			for(unsigned col = 0; col < g.width(); ++col) {
@@ -531,7 +511,7 @@ namespace ms {
 					for(region_set::iterator reg : regions_at) {
 						probability = std::max((reg->min() + reg->max()) / (2.f * reg->size()), probability); //pick the worst probability
 					}
-					if(fabs(probability - best_prob) < .001) { //close enough in probability
+					if(fabs(probability - best_prob) < threshhold) { //close enough in probability
 						best_locs.push_back(rc_coord(row,col));
 					} else if(probability < best_prob) {
 						best_locs.clear();
@@ -544,19 +524,17 @@ namespace ms {
 
 		std::vector<rc_coord> payout_locs;
 		float best_payout = 0;
-		if(best_locs.size() > 1) {//since if 1 there is nothing to decide
+		if(best_locs.size() > 1 && fabs(best_prob - default_prob) > threshhold) {
 			for(rc_coord cell : best_locs) {
 				float payout = expected_payout(cell);
-				if(fabs(best_payout - payout) < .001) {
+				if(fabs(best_payout - payout) < threshhold) {
 					payout_locs.push_back(cell);
 				} else if (payout >= best_payout) {
 					payout_locs.clear();
 					payout_locs.push_back(cell);
 					best_payout = payout;
 				} else if (payout < 0) {
-					int err = apply_flag(cell);
-					(void) err; //suppress unused warnings
-					assert(err == 0);
+					apply_flag(cell);
 					return cell;
 				}
 			}

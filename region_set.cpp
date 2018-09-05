@@ -30,6 +30,7 @@ region_set::region_set(const region_set& copy) : keys(boost::extents[copy.keys.s
             modified_regions.insert(this_it);
         }
     }
+    assert(this_it == cend());
 }
 
 /**
@@ -39,7 +40,7 @@ region_set::region_set(const region_set& copy) : keys(boost::extents[copy.keys.s
  * `first` is `regions.end()` if region not added, otherwise returns an iterator to the region added/merged. 
  * 
  * `second` is `true` if the contents were modified.
- *
+ * 
  * Complexity \f$O(N)\f$
  **/
 std::pair<region_set::iterator,bool> region_set::add(const region& to_add) {

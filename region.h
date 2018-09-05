@@ -108,20 +108,6 @@ namespace ms {
 	inline std::ostream& operator<<(std::ostream& os, const region& r) {
 		return os << r.to_string();
 	}
-
-	/**Print information about rc_coord iff `debug_print`ing is enabled**/
-	inline void debug_print_rc_coord(const rc_coord& arg) {
-		debug_printf("(%u,%u)",arg.row,arg.col);
-	}
-
-	/**Print information about region iff `debug_print`ing is enabled**/
-	inline void debug_print_region(const region& arg) {
-		debug_printf("{[%zu:%u,%u]",arg.size(),arg.min(),arg.max());
-		for(rc_coord rc : arg) {
-			debug_print_rc_coord(rc);
-		}
-		debug_printf("}");
-	}
 }
 
 
