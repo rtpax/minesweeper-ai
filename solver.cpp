@@ -38,59 +38,67 @@ namespace ms {
 	 *
 	 * Store the results in `this.regions`
 	 * 
-	 * Guaranteed to create trim regions, not cause two regions of the same area to be added, and not cause empty regions to be added.
-	 * 
 	 * Complexity \f$O(N)\f$ where \f$N\f$ is the number of cells in the grid
 	 **/
 	int solver::find_base_regions() {
 		region remaining;
 
-		for (unsigned int r = 0; r < g.height(); ++r) {
-			for (unsigned int c = 0; c < g.width(); ++c) {
-				remaining.add_cell(rc_coord(r,c));
-			}
-		}
-		remaining.set_count(g.bombs());
+		for (rc_coord cell : modified_cells) {
+			unsigned r = cell.row, c = cell.col;
+			grid::cell gotten = g.get(r,c);
+			if(gotten <= 8 && gotten > 0) { //grid handles zeroes automatically
+				remaining.remove_safe(rc_coord(r,c));
+				region reg;
+				int num_flags = 0;
 
-		for (unsigned int r = 0; r < g.height(); ++r) {
-			for (unsigned int c = 0; c < g.width(); ++c) {
-				grid::cell gotten = g.get(r,c);
-				if(gotten == grid::ms_flag) {
-					remaining.remove_bomb(rc_coord(r,c));
-				} else if(gotten <= 8 && gotten > 0) { //grid handles zeroes automatically
-					remaining.remove_safe(rc_coord(r,c));
-					region reg;
-					int num_flags = 0;
-
-					for (int rr = -1; rr <= 1; ++rr)
-						for (int cc = -1; cc <= 1; ++cc)
-							if (!(rr == 0 && cc == 0) && g.iscontained(r + rr, c + cc)) {
-								switch (g.get(r + rr, c + cc)) {
-								case grid::ms_hidden:
-								case grid::ms_question:
-									reg.add_cell(rc_coord(r + rr, c + cc));
-									break;
-								case grid::ms_flag:
-									++num_flags;
-									break;
-								default:
-									break;
-								}
-
+				for (int rr = -1; rr <= 1; ++rr)
+					for (int cc = -1; cc <= 1; ++cc)
+						if (!(rr == 0 && cc == 0) && g.iscontained(r + rr, c + cc)) {
+							switch (g.get(r + rr, c + cc)) {
+							case grid::ms_hidden:
+							case grid::ms_question:
+								reg.add_cell(rc_coord(r + rr, c + cc));
+								break;
+							case grid::ms_flag:
+								++num_flags;
+								break;
+							default:
+								break;
 							}
-					if(!reg.empty()) {
-						if(gotten < num_flags)
-							throw std::runtime_error("number of flags surrounding the cell exceeds the number of the cell");
-						reg.set_count(gotten - num_flags);
-						regions.add(reg);
-					}
+
+						}
+				if(!reg.empty()) {
+					if(gotten < num_flags)
+						throw std::runtime_error("number of flags surrounding the cell exceeds the number of the cell");
+					reg.set_count(gotten - num_flags);
+					regions.add(reg);
 				}
 			}
 		}
+		modified_cells.clear();
+
 		//this check is added to prevent massive slowdowns from adding remaining when it intersects around 100 cells -> 2000 cells
-		//the choice of 10 is somewhat arbitrary, TODO get a better system for deciding when to add remaining
-		if(remaining.size() < 10)
+		//the choice of 20 is somewhat arbitrary, TODO get a better system for deciding when to add remaining
+		if(g.count_unopened() < 20) {
+			for (unsigned int r = 0; r < g.height(); ++r) {
+				for (unsigned int c = 0; c < g.width(); ++c) {
+					remaining.add_cell(rc_coord(r,c));
+				}
+			}
+			remaining.set_count(g.bombs());
+			for (unsigned int r = 0; r < g.height(); ++r) {
+				for (unsigned int c = 0; c < g.width(); ++c) {
+					grid::cell gotten = g.get(r,c);
+					if(gotten == grid::ms_flag) {
+						remaining.remove_bomb(rc_coord(r,c));
+					} else if(gotten <= 8 && gotten >= 0) {
+						remaining.remove_safe(rc_coord(r,c));
+					}
+				}
+			}
+			assert(remaining.size() < 15);
 			regions.add(remaining);
+		}
 
 		return 0;
 	}
@@ -246,26 +254,14 @@ namespace ms {
 	 * Returns the number of cells opened, or -1 on error
 	 **/
 	int solver::apply_open(rc_coord arg) {
-		switch(g.open(arg.row, arg.col)) {
-		case -1:
-			throw bad_region_error("Could not open cell (" + std::to_string(arg.row) + "," + std::to_string(arg.col) + ")");
-		case 0:
-			return 0;
-		case 1:
-			remove_safe(arg);
-			return 1;
-		default: //multiple cells opened, remove all open cells
-			int ret = 0;
-			for(unsigned int r = 0; r < g.height(); ++r) {
-				for(unsigned int c = 0; c < g.width(); ++c) {
-					grid::cell curcell = g.get(r,c);
-					if((curcell >= grid::ms_0 && curcell <= grid::ms_8) || curcell == grid::ms_non_bomb) {
-						ret += !!remove_safe(rc_coord{r,c});
-					}
-				}
-			}
-			return ret;	
+		std::unordered_set<rc_coord, rc_coord_hash> cells_opened = g.open(arg.row, arg.col);
+
+		for (rc_coord cell : cells_opened) {
+			remove_safe(cell);
+			modified_cells.insert(cell);
 		}
+
+		return cells_opened.size();
 	}
 
 	/**

@@ -1,7 +1,16 @@
-~   fixed grid::open__ by making it non-recursive (preventing stackoverflow)
-~   make grid::_grid and _visgrid use cell rather than char
-~   changed debug dummy couts use std::ostream with paremeter 0 rather than superset
-    (because old version would not work with clang)
-~   stored compiler in a variable in makefile
-
-
+~   changed grid::open (and open__ and init) to return an unordered_set of 
+    all cells changed, rather than just the number changed.
+~   added grid::unopened_cells member to keep track of unopened cells and
+    added grid::flag_count to keep track of flagged cells and
+    grid::count_unopened() to access the number of cells left
+~   added grid_error for exceptions with grid, used in open and open__ to replace
+    negative return type for error 
+~   changed solver::find_based_region to only add base regions around cells 
+    that are newly been opened.
+~   changed grid_test to reflect changes
+~   removed unused function solver::trim_regions
+~   added solver::modified_cells (unordered_set of rc_coord) to keep track of which
+    cells find_base_regions should open. Adds cells from apply open, removes all cells
+    after find_base_regions
+~   changed apply_open so rather than looping through all cells to check which opened,
+    it just used the unordered_set returned from grid::open

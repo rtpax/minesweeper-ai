@@ -45,9 +45,9 @@ struct rc_coord_hash {
     size_t operator()(rc_coord rc) const {
         std::hash<unsigned> my_hash;
         if(sizeof(unsigned) >= 4)
-            return my_hash((unsigned int) (rc.row << 16) | rc.col);
+            return my_hash((rc.row << 16) | rc.col);
         else
-            return my_hash((unsigned int) (rc.row << 8) | rc.col);
+            return my_hash((rc.row << 8) | rc.col);
     }
 };
 

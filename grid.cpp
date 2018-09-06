@@ -2,7 +2,7 @@
 #include <vector>
 #include <time.h>
 #include "rc_coord.h"
-#include <set>
+#include <cassert>
 
 
 namespace ms {
@@ -60,13 +60,15 @@ namespace ms {
 	 * are too few spaces to place bombs, init will place as many as it can (it will
 	 * never place on the input location).
 	 **/
-	int grid::init(unsigned int row, unsigned int col) {		
+	std::unordered_set<rc_coord, rc_coord_hash> grid::init(unsigned int row, unsigned int col) {		
 		std::vector<rc_coord> nonbombs;
 
+		unopened_cells.clear();
 		for (unsigned int r = 0; r < _height; ++r) {
 			for (unsigned int c = 0; c < _width; ++c) {
 				_visgrid[r][c] = ms_hidden;
 				_grid[r][c] = ms_0;
+				unopened_cells.insert(rc_coord{ r, c });
 				if (!(r == row && c == col)) { //first click is always not a bomb
 					nonbombs.push_back(rc_coord{ r, c });
 				}
@@ -115,9 +117,11 @@ namespace ms {
 	grid::grid(unsigned int height, unsigned int width, cell ** arr) {
 		allocate__(height, width, 0);
 		_gs = RUNNING;
+		flag_count = 0;
 
 		for(unsigned int r = 0; r < _height; ++r) {
 			for(unsigned int c = 0; c < _width; ++c) {
+				unopened_cells.insert(rc_coord(r,c));
 				if(arr[r][c] == ms_bomb) {
 					_grid[r][c] = ms_bomb;
 					++_bombs;
@@ -136,6 +140,7 @@ namespace ms {
 	grid::grid(unsigned int height, unsigned int width, unsigned int bombs) {
 		allocate__(height,width,bombs);
 		_gs = NEW;
+		flag_count = 0;
 	}
 
 	grid::grid(const grid& copy, copy_type gct) {
@@ -150,16 +155,21 @@ namespace ms {
 					_grid[r][c] = copy._grid[r][c];
 				}
 			}
+			unopened_cells = copy.unopened_cells;
 			_gs = copy._gs;
+			flag_count = copy.flag_count;
 			break;
 		case HIDDEN_COPY:
+			unopened_cells.clear();
 			for(unsigned int r = 0; r < _height; ++r) {
 				for(unsigned int c = 0; c < _width; ++c) {
 					_visgrid[r][c] = ms_hidden;
 					_grid[r][c] = copy._grid[r][c];
+					unopened_cells.insert(rc_coord(r,c));
 				}
 			}
 			_gs = RUNNING;
+			flag_count = 0;
 			break;
 		case SURFACE_COPY:
 			for(unsigned int r = 0; r < _height; ++r) {
@@ -168,7 +178,9 @@ namespace ms {
 					_grid[r][c] = grid::ms_error;
 				}
 			}	
+			unopened_cells = copy.unopened_cells;
 			_gs = copy._gs;	
+			flag_count = copy.flag_count;
 			break;
 		case PARAM_COPY:
 			_gs = NEW;
@@ -198,9 +210,11 @@ namespace ms {
 
 		switch (_visgrid[row][col]) {
 		case ms_hidden:
+			++flag_count;
 			_visgrid[row][col] = ms_flag;
 			return 0;
 		case ms_flag:
+			--flag_count;
 			_visgrid[row][col] = ms_question;
 			return 0;
 		case ms_question:
@@ -222,10 +236,14 @@ namespace ms {
 		if (_gs != RUNNING || !iscontained(row, col) ||
 				(flag != ms_flag && flag != ms_hidden && flag != ms_question))
 			return 1;
+		
+		if(flag == ms_flag)
+			++flag_count;
 
 		switch (_visgrid[row][col]) {
-		case ms_hidden:
 		case ms_flag:
+			--flag_count;//counteracts incremenent if flagging, decrements otherwise
+		case ms_hidden:
 		case ms_question:
 			_visgrid[row][col] = flag;
 			return 0;
@@ -234,12 +252,10 @@ namespace ms {
 		}
 	}
 
-
-	int grid::open__(int row, int col) {
-		std::set<rc_coord> to_open = { rc_coord(row,col) };
-		std::set<rc_coord> next_open = {};
-
-		int sum = 0;
+	std::unordered_set<rc_coord, rc_coord_hash> grid::open__(int row, int col) {
+		std::unordered_set<rc_coord, rc_coord_hash> all_opened = {};
+		std::unordered_set<rc_coord, rc_coord_hash> to_open = { rc_coord(row,col) };
+		std::unordered_set<rc_coord, rc_coord_hash> next_open = {};
 
 		while(!to_open.empty()) {
 			for(rc_coord opening  : to_open) {
@@ -254,59 +270,60 @@ namespace ms {
 						}
 					}
 				} else if (vis == ms_hidden || vis == ms_question) {
-					_visgrid[opening.row][opening.col] = _grid[opening.row][opening.col];	
+					_visgrid[opening.row][opening.col] = _grid[opening.row][opening.col];
 					if(_visgrid[opening.row][opening.col] == ms_0)
-						next_open.insert(rc_coord(opening.row, opening.col));
-					++sum;
+						next_open.insert(opening);
+					else if(_visgrid[opening.row][opening.col] == ms_bomb)
+						_gs = LOST;
+					all_opened.insert(opening);
+					unopened_cells.erase(unopened_cells.find(opening));
 				} else if (vis != ms_flag && (vis > ms_8 || vis < ms_0)) {
-					return -1;
+					throw grid_error("Could not open cell " + rc_coord(row,col).to_string());
 				}
 			}
 			to_open = std::move(next_open);
 			next_open.clear();
 		}
-		return sum;
+		return all_opened;
 	}
 
+
 	/**
-	 * Returns number of cells opened 
-	 *   - 1 if hidden and nonzero
-	 *   - N>=0 if a number surrounded by the correct number of bombs or zero
-	 *   - 0 otherwise
-	 *   - -1 on error (out of bounds or not initialized))
+	 * Returns an unordered set of cells opened
+	 * 
+	 * throws an error if the cell could not be opened
 	 **/
-	int grid::open(unsigned int row, unsigned int col) {
-		int ret = 0;
+	std::unordered_set<rc_coord, rc_coord_hash> grid::open(unsigned int row, unsigned int col) {
+		std::unordered_set<rc_coord, rc_coord_hash> ret;
 		if (!iscontained(row, col))
-			return -1;
-		else if (_gs == NEW)
+			throw grid_error("attempted to open cell " + rc_coord(row, col).to_string() + "not contained in grid");
+		else if (_gs == NEW) {
 			ret = init(row, col);
-		else if (_gs != RUNNING || !iscontained(row, col))
-			ret = -1;
-		else
+		} else
 			ret = open__((signed int)row, (signed int)col);
 
-		updategamestate();
+		update_if_won();
 
 		return ret;
 	}
 
-	int grid::updategamestate() {
+	/**
+	 * Checks if the game has been won (only bombs hidden, no bombs open).
+	 *   - returns 1 if the gamestate is updated to WON 
+	 *   - returns 0 otherwise
+	 **/
+	int grid::update_if_won() {
 		if (_gs != RUNNING)
 			return 0;
-		bool haswon = 1;
-		for (unsigned int r = 0; r < _height; ++r) {
-			for (unsigned int c = 0; c < _width; ++c) {
-				if (_visgrid[r][c] == ms_bomb) {
-					_gs = LOST;
-					return 1;
-				}
-				if (_grid[r][c] != ms_bomb && _visgrid[r][c] != _grid[r][c]) {
-					haswon = 0;
-				}
+		bool only_bombs_unopened = true;
+		for(rc_coord cell : unopened_cells) {
+			if(_grid[cell.row][cell.col] != ms_bomb) {
+				assert(_visgrid[cell.row][cell.col] != _grid[cell.row][cell.col]);
+				only_bombs_unopened = false;
+				break;
 			}
 		}
-		if (haswon) {
+		if (only_bombs_unopened) {
 			_gs = WON;
 			return 1;
 		}

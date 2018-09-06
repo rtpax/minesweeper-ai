@@ -2,9 +2,18 @@
 #define MS_GRID_H
 
 #include <random>
-
+#include <stdexcept>
+#include <unordered_set>
+#include "rc_coord.h"
 
 namespace ms {
+	/**
+	 * An exception involving the `ms::grid` class
+	 **/
+	class grid_error : std::logic_error {
+		using std::logic_error::logic_error;
+	};
+
 	/**
 	 * Contains data and methods required to play a minesweeper game.
 	 **/
@@ -77,20 +86,22 @@ namespace ms {
 
 
 	private:
-		int init(unsigned int row, unsigned int col);
-		int updategamestate();
-		int open__(int row, int col);
+		std::unordered_set<rc_coord, rc_coord_hash> init(unsigned int row, unsigned int col);
+		int update_if_won();
+		std::unordered_set<rc_coord, rc_coord_hash> open__(int row, int col);
 		int allocate__(unsigned int row, unsigned int col, unsigned int bombs);
 		int count_neighbor(int row, int col, cell value = ms_bomb);
 		int count_vis_neighbor(int row, int col, cell value = ms_flag);
 		/**Checks the contents of `_grid` with bounds checking**/
 		cell peek(unsigned int row, unsigned int col) const {
-			if (iscontained(row, col)) return (cell)_grid[row][col]; else return ms_error; 
+			if (iscontained(row, col)) return _grid[row][col]; else return ms_error; 
 		}
 		unsigned int _height, _width, _bombs;
 		cell ** _grid;
 		cell ** _visgrid;
 		gamestate _gs;
+		std::unordered_set<rc_coord, rc_coord_hash> unopened_cells;
+		unsigned flag_count;
 		static std::mt19937 rng;
 	public:
 		grid(unsigned int height, unsigned int width, unsigned int bombs);
@@ -102,15 +113,16 @@ namespace ms {
 		unsigned int bombs() const { return _bombs; }
 		gamestate gamestate() const { return _gs; }
 		bool iscontained(int row, int col) const;
+		int count_unopened() const { return unopened_cells.size() - flag_count; }
 
 		/**Returns the visible contents of a cell. Return `ms_error` if the specified cell is not contained in the grid.**/
 		cell get(unsigned int row, unsigned int col) const { 
-			if (iscontained(row, col)) return (cell)_visgrid[row][col]; else return ms_error; 
+			if (iscontained(row, col)) return _visgrid[row][col]; else return ms_error; 
 		}
 		
 		int flag(unsigned int row, unsigned int col);
 		int set_flag(unsigned int row, unsigned int col, cell flag);
-		int open(unsigned int row, unsigned int col);
+		std::unordered_set<rc_coord, rc_coord_hash> open(unsigned int row, unsigned int col);
 		
 		void reset();
 

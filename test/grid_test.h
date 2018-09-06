@@ -68,11 +68,11 @@ TEST_CASE("grid: cell access", "grid::open, grid::get") {
     CHECK(testgrid.get(0,1) == grid::cell::ms_hidden);
     CHECK(testgrid.get(5,5) == grid::cell::ms_hidden);
     CHECK(testgrid.get(40,30) == grid::cell::ms_error);
-    CHECK(testgrid.open(9,8) == 1);
+    CHECK(testgrid.open(9,8).size() == 1);
     CHECK(testgrid.get(9,8) == grid::cell::ms_1);
-    CHECK(testgrid.open(8,6) == 1);
+    CHECK(testgrid.open(8,6).size() == 1);
     CHECK(testgrid.get(8,6) == grid::cell::ms_2);
-    CHECK(testgrid.open(9,0) == 6);
+    CHECK(testgrid.open(9,0).size() == 6);
 
     for(int r = 0; r < 11; ++r) {
         for(int c = 0; c < 11; ++c) {
@@ -81,7 +81,7 @@ TEST_CASE("grid: cell access", "grid::open, grid::get") {
         }
     }
 
-    CHECK(testgrid.open(7,1) == 1);
+    CHECK(testgrid.open(7,1).size() == 1);
     CHECK(testgrid.get(7,1) == grid::cell::ms_bomb);
 }
 

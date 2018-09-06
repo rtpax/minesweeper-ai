@@ -56,7 +56,6 @@ namespace ms {
 
 		/**
 		 * Returns true if the cells are the same area and have the same `min` and `max`, false otherwise. 
-		 * Note that it does not check if both are trim. Follows the same rules as region::samearea for determining if all cells are the same.
 		 * 
 		 * Complexity \f$O(N^2)\f$.
 		 **/

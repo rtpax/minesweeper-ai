@@ -53,6 +53,7 @@ namespace ms {
 		region_set regions;
 		std::unordered_set<rc_coord, rc_coord_hash> safe_queue;
 		std::unordered_set<rc_coord, rc_coord_hash> bomb_queue;
+		std::unordered_set<rc_coord, rc_coord_hash> modified_cells;
 
 		int remove_safe(rc_coord cell);
 		int remove_bomb(rc_coord cell);
@@ -65,8 +66,6 @@ namespace ms {
 		
 		region approx_remain() const;
 		float expected_payout(rc_coord cell) const;
-
-		int trim_regions();
 
 		int find_regions();
 		int find_base_regions();
