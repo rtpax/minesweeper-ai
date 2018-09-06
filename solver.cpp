@@ -57,7 +57,7 @@ namespace ms {
 				grid::cell gotten = g.get(r,c);
 				if(gotten == grid::ms_flag) {
 					remaining.remove_bomb(rc_coord(r,c));
-				} else if(gotten <= 8 && gotten >= 0) {
+				} else if(gotten <= 8 && gotten > 0) { //grid handles zeroes automatically
 					remaining.remove_safe(rc_coord(r,c));
 					region reg;
 					int num_flags = 0;
@@ -500,7 +500,7 @@ namespace ms {
 
 		std::vector<rc_coord> best_locs;
 		float best_prob = 2; //higher than any real probability could be
-		float default_prob = (remain.min() + remain.max()) / (2.f * remain.size());
+		float default_prob = (remain.min() + remain.max()) / (2.f * remain.size()); //note that output could be infinite
 		constexpr float threshhold = .001;
 
 		for(unsigned row = 0; row < g.height(); ++row) {

@@ -61,7 +61,6 @@ void printms(const ms::grid& g) {
 }
 
 int main(int argc, char ** argv) { try {
-    std::cout << time(NULL) << "\n";
     int height = 0, width = 0, bombs = 0;
 
     if(argc > 3) {

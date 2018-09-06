@@ -81,14 +81,15 @@ namespace ms {
 		int updategamestate();
 		int open__(int row, int col);
 		int allocate__(unsigned int row, unsigned int col, unsigned int bombs);
-		int count_neighbor(int row, int col, cell value);
+		int count_neighbor(int row, int col, cell value = ms_bomb);
+		int count_vis_neighbor(int row, int col, cell value = ms_flag);
 		/**Checks the contents of `_grid` with bounds checking**/
 		cell peek(unsigned int row, unsigned int col) const {
 			if (iscontained(row, col)) return (cell)_grid[row][col]; else return ms_error; 
 		}
 		unsigned int _height, _width, _bombs;
-		char ** _grid;
-		char ** _visgrid;
+		cell ** _grid;
+		cell ** _visgrid;
 		gamestate _gs;
 		static std::mt19937 rng;
 	public:

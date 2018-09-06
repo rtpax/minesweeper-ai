@@ -1,5 +1,7 @@
-~   changed debug printing to use iostream
-~   added assert in region_set constructor
-~   changed solver::step to not check probabilities in cases where cells are 
-    in the remaining region
+~   fixed grid::open__ by making it non-recursive (preventing stackoverflow)
+~   make grid::_grid and _visgrid use cell rather than char
+~   changed debug dummy couts use std::ostream with paremeter 0 rather than superset
+    (because old version would not work with clang)
+~   stored compiler in a variable in makefile
+
 

@@ -13,7 +13,7 @@
 namespace ms {
 
 	class region_set;
-	class region_cmp_no_min_max;
+	struct region_cmp_no_min_max;
 
 	class bad_region_error : public std::logic_error { using std::logic_error::logic_error; };
 

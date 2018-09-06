@@ -1,3 +1,5 @@
+CXX:=g++
+LD:=g++
 DEBUG_LEVEL := 0
 
 CXXFLAGS := -O2 -std=c++17 -g -Wall -DNDEBUG
@@ -24,28 +26,28 @@ test: test.exe
 prof: prof.exe
 
 sweep.exe: $(MAIN_OBJS)
-	g++ $(MAIN_OBJS) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o sweep.exe
+	$(LD) $(MAIN_OBJS) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o sweep.exe
 
 debug.exe: $(DEBUG_OBJS)
-	g++ $(DEBUG_OBJS) $(DEBUG_CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o debug.exe
+	$(LD) $(DEBUG_OBJS) $(DEBUG_CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o debug.exe
 
 test.exe: $(TEST_OBJS)
-	g++ $(TEST_OBJS) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o test.exe
+	$(LD) $(TEST_OBJS) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o test.exe
 
 prof.exe: $(PROF_OBJS)
-	g++ $(PROF_OBJS) $(PROF_CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o prof.exe
+	$(LD) $(PROF_OBJS) $(PROF_CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o prof.exe
 
 %.o: %.cpp
-	g++ -c $(CPPFLAGS) $(CXXFLAGS) $*.cpp -o $*.o
-	g++ -MM $(CPPFLAGS) $(CXXFLAGS) $*.cpp -MT $*.o > $*.d
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $*.cpp -o $*.o
+	$(CXX) -MM $(CPPFLAGS) $(CXXFLAGS) $*.cpp -MT $*.o > $*.d
 
 %.debug.o: %.cpp
-	g++ -c $(CPPFLAGS) $(DEBUG_CXXFLAGS) $*.cpp -o $*.debug.o
-	g++ -MM $(CPPFLAGS) $(DEBUG_CXXFLAGS) $*.cpp -MT $*.debug.o > $*.debug.d
+	$(CXX) -c $(CPPFLAGS) $(DEBUG_CXXFLAGS) $*.cpp -o $*.debug.o
+	$(CXX) -MM $(CPPFLAGS) $(DEBUG_CXXFLAGS) $*.cpp -MT $*.debug.o > $*.debug.d
 
 %.prof.o: %.cpp
-	g++ -c $(CPPFLAGS) $(PROF_CXXFLAGS) $*.cpp -o $*.prof.o
-	g++ -MM $(CPPFLAGS) $(PROF_CXXFLAGS) $*.cpp -MT $*.prof.o > $*.prof.d
+	$(CXX) -c $(CPPFLAGS) $(PROF_CXXFLAGS) $*.cpp -o $*.prof.o
+	$(CXX) -MM $(CPPFLAGS) $(PROF_CXXFLAGS) $*.cpp -MT $*.prof.o > $*.prof.d
 
 -include $(MAIN_OBJS:.o=.d)
 -include $(TEST_OBJS:.o=.d)

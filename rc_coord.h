@@ -4,6 +4,7 @@
 #include <limits>
 #include <iostream>
 #include <functional>
+#include <string>
 
 namespace ms {
 

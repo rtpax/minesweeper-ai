@@ -1,6 +1,8 @@
 #include "grid.h"
 #include <vector>
 #include <time.h>
+#include "rc_coord.h"
+#include <set>
 
 
 namespace ms {
@@ -15,7 +17,7 @@ namespace ms {
 	}
 
 	/**
-	 * Returns the number of adjacent cells that are bombs.
+	 * Returns the number of adjacent cells that are the given underlying value (bomb by default).
 	 **/
 	int grid::count_neighbor(int row, int col, cell value) {
 		int count = 0;
@@ -34,20 +36,37 @@ namespace ms {
 	}
 
 	/**
+	 * Returns the number of adjacent cells that are the given visible value (flag by default)
+	 **/
+	int grid::count_vis_neighbor(int row, int col, cell value) {
+		int count = 0;
+
+		for (int rr = -1; rr <= 1; ++rr) {
+			for (int cc = -1; cc <= 1; ++cc) {
+				if (!(rr == 0 && cc == 0) && iscontained(row + rr, col + cc)) {
+					if (_visgrid[row + rr][col + cc] == value) {
+						++count;
+					}
+				}
+			}
+		}
+
+		return count;
+	}
+
+	/**
 	 * Initializes the state of the grid such that it has the correct number of bombs 
 	 * and the input location is not a bomb. The input location is opened. If there
 	 * are too few spaces to place bombs, init will place as many as it can (it will
 	 * never place on the input location).
 	 **/
-	int grid::init(unsigned int row, unsigned int col) {
-		struct rc_coord { unsigned int row, col; };//similar definition as in region.h, no other relation
-		
+	int grid::init(unsigned int row, unsigned int col) {		
 		std::vector<rc_coord> nonbombs;
 
 		for (unsigned int r = 0; r < _height; ++r) {
 			for (unsigned int c = 0; c < _width; ++c) {
 				_visgrid[r][c] = ms_hidden;
-				_grid[r][c] = 0;
+				_grid[r][c] = ms_0;
 				if (!(r == row && c == col)) { //first click is always not a bomb
 					nonbombs.push_back(rc_coord{ r, c });
 				}
@@ -57,13 +76,14 @@ namespace ms {
 		for (unsigned int b = 0; b < _bombs && !nonbombs.empty(); ++b) {
 			int index = rng() % nonbombs.size();
 			_grid[nonbombs[index].row][nonbombs[index].col] = ms_bomb;
-			nonbombs.erase(nonbombs.begin() + index);
+			std::swap(nonbombs[index], nonbombs.back());
+			nonbombs.pop_back();
 		}
 
 		for (unsigned int r = 0; r < _height; ++r) {
 			for (unsigned int c = 0; c < _width; ++c) {
 				if (_grid[r][c] != ms_bomb)
-					_grid[r][c] = count_neighbor(r, c, ms_bomb);
+					_grid[r][c] = (cell) count_neighbor(r, c, ms_bomb);
 			}
 		}
 
@@ -81,11 +101,11 @@ namespace ms {
 		_width = width > 0 ? width : 1;
 		_height = height > 0 ? height : 1;
 		_bombs = bombs;
-		_grid = new char*[_height];
-		_visgrid = new char*[_height];
+		_grid = new cell*[_height];
+		_visgrid = new cell*[_height];
 		for (unsigned int h = 0; h < _height; ++h) {
-			_grid[h] = new char[_width]();
-			_visgrid[h] = new char[_width];
+			_grid[h] = new cell[_width]();
+			_visgrid[h] = new cell[_width];
 			std::fill_n(_visgrid[h],_width,ms_hidden);
 		}
 
@@ -108,7 +128,7 @@ namespace ms {
 		for (unsigned int r = 0; r < _height; ++r) {
 			for (unsigned int c = 0; c < _width; ++c) {
 				if (_grid[r][c] != ms_bomb)
-					_grid[r][c] = count_neighbor(r, c, ms_bomb);
+					_grid[r][c] = (cell) count_neighbor(r, c, ms_bomb);
 			}
 		}
 	}
@@ -216,36 +236,36 @@ namespace ms {
 
 
 	int grid::open__(int row, int col) {
-		if (0 <= _visgrid[row][col] && _visgrid[row][col] <= 8) {
-			int flagcount = count_neighbor(row, col, ms_flag);
-			if (flagcount == _visgrid[row][col]) {
-				int sum = 0;
-				for (int rr = -1; rr <= 1; ++rr) {
-					for (int cc = -1; cc <= 1; ++cc) {
-						if (!(rr == 0 && cc == 0) && iscontained(row + rr, col + cc))
-							if (_visgrid[row + rr][col + cc] == ms_hidden || _visgrid[row + rr][col + cc] == ms_question)
-								sum += open__(row + rr, col + cc);
+		std::set<rc_coord> to_open = { rc_coord(row,col) };
+		std::set<rc_coord> next_open = {};
+
+		int sum = 0;
+
+		while(!to_open.empty()) {
+			for(rc_coord opening  : to_open) {
+				cell vis = _visgrid[opening.row][opening.col];
+
+				if(count_vis_neighbor(opening.row, opening.col) == vis) { // implies 0 <= vis <= 8
+					for(int rr = -1; rr <= 1; ++rr) {
+						for(int cc = -1; cc <= 1; ++cc) {
+							if (!(rr == 0 && cc == 0) && iscontained(opening.row + rr, opening.col + cc))
+								if(_visgrid[opening.row + rr][opening.col + cc] == ms_hidden || _visgrid[opening.row + rr][opening.col + cc] == ms_question)
+									next_open.insert(rc_coord(opening.row + rr, opening.col + cc));
+						}
 					}
+				} else if (vis == ms_hidden || vis == ms_question) {
+					_visgrid[opening.row][opening.col] = _grid[opening.row][opening.col];	
+					if(_visgrid[opening.row][opening.col] == ms_0)
+						next_open.insert(rc_coord(opening.row, opening.col));
+					++sum;
+				} else if (vis != ms_flag && (vis > ms_8 || vis < ms_0)) {
+					return -1;
 				}
-				return sum;
 			}
-			else {
-				return 0;
-			}
+			to_open = std::move(next_open);
+			next_open.clear();
 		}
-		else if (_visgrid[row][col] == ms_hidden || _visgrid[row][col] == ms_question) {
-			_visgrid[row][col] = _grid[row][col];
-			if (_visgrid[row][col] == 0) {
-				return 1 + open__(row, col);
-			}
-			return 1;
-		}
-		else if (_visgrid[row][col] == ms_flag) {
-			return 0;
-		}
-		else {
-			return -1;
-		}
+		return sum;
 	}
 
 	/**
@@ -293,6 +313,11 @@ namespace ms {
 		return 0;
 	}
 
+	/**
+	 * reinitializes the grid, all cells are hidden, gamestate is new
+	 * 
+	 * (bombs are not placed until first cell opened)
+	 **/
 	void grid::reset() {
 		_gs = NEW;
 		for (unsigned int r = 0; r < _height; ++r) {
