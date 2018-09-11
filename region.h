@@ -29,10 +29,10 @@ namespace ms {
 		unsigned int max() const { return _max; }
 		/**The minimum number of bombs that could possibly be in the region.\n Complexity \f$O(1)\f$**/
 		unsigned int min() const { return _min; }
-		/**Set the max and the min. Will fail if attempting to set an impossible value (min > max or max > size) and return 1. Otherwise returns 0.\n Complexity \f$O(1)\f$*/
-		int set_range(unsigned int min, unsigned int max) { if(min > max || max > _cells.size()) return 1; _min = min; _max = max; return 0; }
-		/**Set the max and min to the same value. Will fail if attempting to set an impossible value and return 1. Otherwise returns 0.\n Complexity \f$O(1)\f$**/
-		int set_count(unsigned int minmax) { if(minmax > _cells.size()) return 1; _min = _max = minmax; return 0; }
+		/**Set the max and the min. Will fail if attempting to set an impossible value (min > max or max > size) and throw a bad_region_error. Otherwise returns 0.\n Complexity \f$O(1)\f$*/
+		int set_range(unsigned int min, unsigned int max) { if(min > max || max > _cells.size()) throw bad_region_error("impossible range"); _min = min; _max = max; return 0; }
+		/**Set the max and min to the same value. Will fail if attempting to set an impossible value and throw a bad_region_error. Otherwise returns 0.\n Complexity \f$O(1)\f$**/
+		int set_count(unsigned int minmax) { if(minmax > _cells.size()) throw bad_region_error("count greater than size"); _min = _max = minmax; return 0; }
 
 		/**Default constructor. Contains 0 cells. `max = min = 0`.\n Complexity \f$O(1)\f$. **/
 		region() { set_count(0); }

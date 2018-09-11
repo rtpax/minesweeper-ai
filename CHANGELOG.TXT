@@ -1,16 +1,7 @@
-~   changed grid::open (and open__ and init) to return an unordered_set of 
-    all cells changed, rather than just the number changed.
-~   added grid::unopened_cells member to keep track of unopened cells and
-    added grid::flag_count to keep track of flagged cells and
-    grid::count_unopened() to access the number of cells left
-~   added grid_error for exceptions with grid, used in open and open__ to replace
-    negative return type for error 
-~   changed solver::find_based_region to only add base regions around cells 
-    that are newly been opened.
-~   changed grid_test to reflect changes
-~   removed unused function solver::trim_regions
-~   added solver::modified_cells (unordered_set of rc_coord) to keep track of which
-    cells find_base_regions should open. Adds cells from apply open, removes all cells
-    after find_base_regions
-~   changed apply_open so rather than looping through all cells to check which opened,
-    it just used the unordered_set returned from grid::open
+~   reset max cells before remaining to 10 (had changed to 20, but memory costs too great)
+~   fixed bug where permutations were calculated incorrectly in expected payout 
+    [had n!/(n-k)! instead of n!/((n-k)!*k!)]
+~   improved permuation calculation by removing safe and bomb cells around the cell in question
+~   changed probability calculation to average the probabilities from the smallest regions
+    that contained the cell. Rational being that the smallest cells are the most likely to be relevant
+~   changed region::set_count and set_range to throw on bad input rather than return a flag

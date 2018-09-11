@@ -93,8 +93,9 @@ PRIORITY: HIGH
     Date: 8/30/2018
 
 PRIORITY: MEDIUM
-~   Program does not exit on Ctrl-C (it used to, no new libraries linked)
+****Program does not exit on Ctrl-C (it used to, no new libraries linked)
     Can still recieve SIGINT from gdb
+    SOLVED: piping "solve" to the program releases control of that feature (in msys bash)
     Date: 8/21/2018
 
 PRIORITY: LOW

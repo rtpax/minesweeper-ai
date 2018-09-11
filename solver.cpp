@@ -78,8 +78,8 @@ namespace ms {
 		modified_cells.clear();
 
 		//this check is added to prevent massive slowdowns from adding remaining when it intersects around 100 cells -> 2000 cells
-		//the choice of 20 is somewhat arbitrary, TODO get a better system for deciding when to add remaining
-		if(g.count_unopened() < 20) {
+		//the choice of 10 is somewhat arbitrary, TODO get a better system for deciding when to add remaining
+		if(g.count_unopened() < 10) {
 			for (unsigned int r = 0; r < g.height(); ++r) {
 				for (unsigned int c = 0; c < g.width(); ++c) {
 					remaining.add_cell(rc_coord(r,c));
@@ -96,7 +96,7 @@ namespace ms {
 					}
 				}
 			}
-			assert(remaining.size() < 15);
+			assert(remaining.size() < 10);
 			regions.add(remaining);
 		}
 
@@ -371,20 +371,28 @@ namespace ms {
 			}
 		}
 		for(unsigned count = 0; count <= 8; ++count) {
-			if(new_base.size() >= count) {
+			try {
 				new_base.set_count(count);
-				try {
-					solver test(*this, grid::SURFACE_COPY);
-					test.apply_open(cell);
-					test.regions.add(new_base);
-					test.find_aux_regions(false);
-					payout[count] += test.safe_queue.size() + test.bomb_queue.size() / 1.5f; //opening safe cells is worth a bit more than flagging cells
-					permutations[count] = factorial<float>(new_base.size()) / factorial<float>(new_base.size() - count);
-				} catch (const bad_region_error& e) {
-					goto else_bad_count;
+				solver test(*this, grid::SURFACE_COPY);
+				test.apply_open(cell);
+				test.regions.add(new_base);
+				test.find_aux_regions(false);
+				payout[count] += test.safe_queue.size() + test.bomb_queue.size() / 1.5f; //opening safe cells is worth a bit more than flagging cells
+
+				//restrict the set of possible locations of bombs around the openned cell
+				//to get a better estimate of how likely a certain number is
+				region final_base = new_base;
+				final_base.set_count(count);
+				for(rc_coord cell : new_base) {
+					if(test.safe_queue.find(cell) != test.safe_queue.end()) {
+						final_base.remove_safe(cell);
+					} else if (test.bomb_queue.find(cell) != test.bomb_queue.end()) {
+						final_base.remove_bomb(cell);
+					}
 				}
-			} else {
-			else_bad_count:
+				permutations[count] = factorial<float>(final_base.size()) / 
+					(factorial<float>(final_base.size() - final_base.max()) * factorial<float>(final_base.max()));
+			} catch (const bad_region_error& e) {
 				payout[count] = 0;
 				permutations[count] = 0;
 			}
@@ -503,10 +511,28 @@ namespace ms {
 			for(unsigned col = 0; col < g.width(); ++col) {
 				if(g.get(row,col) == grid::ms_hidden || g.get(row,col) == grid::ms_question) {
 					const region_set::subset_type& regions_at = regions.regions_intersecting(rc_coord(row, col));
-					float probability = regions_at.empty() ? default_prob : 0;
+					//select the smallest regions since they are most relevant
+					std::vector<region_set::iterator> smallest_regions;
 					for(region_set::iterator reg : regions_at) {
-						probability = std::max((reg->min() + reg->max()) / (2.f * reg->size()), probability); //pick the worst probability
+						if(smallest_regions.empty()) {
+							smallest_regions.push_back(reg);
+						} else if (reg->size() < smallest_regions.front()->size()) {
+							smallest_regions.clear();
+							smallest_regions.push_back(reg);
+						} else if (reg->size() == smallest_regions.front()->size()) {
+							smallest_regions.push_back(reg);
+						}
 					}
+					float probability = 0;
+					if(smallest_regions.empty()) {
+						probability = default_prob;
+					} else {
+						for(region_set::iterator reg : smallest_regions) {
+							probability +=  reg->min() + reg->max();
+						}
+						probability /= 2 * smallest_regions.size() * smallest_regions.front()->size();
+					}
+
 					if(fabs(probability - best_prob) < threshhold) { //close enough in probability
 						best_locs.push_back(rc_coord(row,col));
 					} else if(probability < best_prob) {
