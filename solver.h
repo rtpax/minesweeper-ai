@@ -46,6 +46,11 @@ namespace ms {
 		grid view_grid() const { return grid(g, grid::SURFACE_COPY); } 
 		/**Returns a complete copy of the games internal grid.*/
 		grid get_grid() const { return grid(g, grid::FULL_COPY); } 
+
+		unsigned bombs() { return g.bombs(); }
+		unsigned width() { return g.width(); }
+		unsigned height() { return g.height(); }
+		grid::cell get(unsigned row, unsigned col) { return g.get(row,col); }
 	protected:
 		static std::mt19937 rng;
 

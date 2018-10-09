@@ -1,7 +1,5 @@
-~   reset max cells before remaining to 10 (had changed to 20, but memory costs too great)
-~   fixed bug where permutations were calculated incorrectly in expected payout 
-    [had n!/(n-k)! instead of n!/((n-k)!*k!)]
-~   improved permuation calculation by removing safe and bomb cells around the cell in question
-~   changed probability calculation to average the probabilities from the smallest regions
-    that contained the cell. Rational being that the smallest cells are the most likely to be relevant
-~   changed region::set_count and set_range to throw on bad input rather than return a flag
+~ added ui.cpp and ui.h (added to makefile)
+~ implemented curses based ui
+~ added width, height, bomb-count, and visible cell value to solver
+~ linked ncurses in makefile
+~ changed main to implement curses ui rather than line-by-line

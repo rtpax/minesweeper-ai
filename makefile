@@ -7,9 +7,9 @@ DEBUG_CXXFLAGS := -O0 -fno-inline -g -std=c++17 -Wall -DDEBUG=$(DEBUG_LEVEL)
 PROF_CXXFLAGS := -O2 -std=c++17 -g -Wall -DNDEBUG -pg
 CPPFLAGS := -I/c/msys64/mingw64/include
 LDFLAGS := -L/c/msys64/mingw64/libs
-LDLIBS :=
+LDLIBS := -lncurses
 
-OBJS := grid.o region.o region_set.o solver.o
+OBJS := grid.o region.o region_set.o solver.o ui.o
 MAIN_OBJS := main.o $(OBJS)
 TEST_OBJS := ./test/test.o $(OBJS)
 DEBUG_OBJS := $(MAIN_OBJS:.o=.debug.o)
