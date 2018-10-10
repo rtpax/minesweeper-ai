@@ -23,15 +23,18 @@ PRIORITY: MEDIUM
 ****pull out regions and kell_keys (and possibly the queues) into a seperate container
     class to seperate the logic
 ~   let solver look forward more than just one move
-~   display remaining bombs
-~   allow removal of flags
+****display remaining bombs
+****allow removal of flags
 ~   make decision based on chance of winning
+~   come up with calculation given number of bombs remaining and number of cells remaining for
+    chances of winning
 ~   more indepth calculation of each cell, calculate if each permutation of bombs is a contradiction
 ~   streamline payout calculation for cells with no neighbors
 
 PRIORITY: LOW
 ~   use computer vision software to play on an actual minesweeper board
-~   mark all bombs as flag after winning, rather than leaving hidden (implemented by solver, not grid)
+****mark all bombs as flag after winning, rather than leaving hidden (implemented by solver, not grid) 
+    NOTE: Implemented by grid
 
 BUGS
 

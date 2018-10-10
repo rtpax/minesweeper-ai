@@ -1,5 +1,12 @@
-~ added ui.cpp and ui.h (added to makefile)
-~ implemented curses based ui
-~ added width, height, bomb-count, and visible cell value to solver
-~ linked ncurses in makefile
-~ changed main to implement curses ui rather than line-by-line
+~   added manual_unflag capabilities to solver
+~   added solver::reset_regions to recover from flag removal
+~   added unflag option in ui 
+~   added display info in ui about bombs remaining and game state
+~   disable opening/flagging cells after game end
+~   fixed grid's flag counting, was resulting in bugs
+~   added display in ui for number of bombs and win/loss status
+~   added grid::clear_all_flags
+~   added grid::cell::ms_unopened_bomb for display purposes, to differentiate between
+    last bomb opened
+~   reinforced step_certain by adding try catch in case user added a bad flag
+~   added SIGCONT handler

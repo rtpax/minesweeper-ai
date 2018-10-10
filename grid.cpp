@@ -237,14 +237,16 @@ namespace ms {
 				(flag != ms_flag && flag != ms_hidden && flag != ms_question))
 			return 1;
 		
-		if(flag == ms_flag)
-			++flag_count;
-
 		switch (_visgrid[row][col]) {
-		case ms_flag:
-			--flag_count;//counteracts incremenent if flagging, decrements otherwise
 		case ms_hidden:
 		case ms_question:
+			if(flag == ms_flag)
+				++flag_count;//increment flag if becoming a flag
+			_visgrid[row][col] = flag;
+			return 0;
+		case ms_flag:
+			if(flag != ms_flag)
+				--flag_count;
 			_visgrid[row][col] = flag;
 			return 0;
 		default:
@@ -295,6 +297,8 @@ namespace ms {
 	 **/
 	std::unordered_set<rc_coord, rc_coord_hash> grid::open(unsigned int row, unsigned int col) {
 		std::unordered_set<rc_coord, rc_coord_hash> ret;
+		if(_gs == WON || _gs == LOST)
+			return ret;
 		if (!iscontained(row, col))
 			throw grid_error("attempted to open cell " + rc_coord(row, col).to_string() + "not contained in grid");
 		else if (_gs == NEW) {
@@ -303,6 +307,19 @@ namespace ms {
 			ret = open__((signed int)row, (signed int)col);
 
 		update_if_won();
+		if(_gs == WON) {
+			_gs = RUNNING;//temporarily allow set_flag
+			for(rc_coord cell : unopened_cells) {
+				if(_grid[cell.row][cell.col] == ms_bomb)
+					set_flag(cell.row,cell.col,ms_flag);
+			}
+			_gs = WON;
+		} else if (_gs == LOST) {
+			for(rc_coord cell : unopened_cells) {
+				if(_grid[cell.row][cell.col] == ms_bomb && _visgrid[cell.row][cell.col] != ms_flag)
+					_visgrid[cell.row][cell.col] = ms_unopened_bomb;
+			}			
+		}
 
 		return ret;
 	}
@@ -342,7 +359,17 @@ namespace ms {
 				_visgrid[r][c] = ms_hidden;
 			}
 		}
+		flag_count = 0;
 	}
 
+	/**
+	 * resets all flags to ms_hidden
+	 **/
+	void grid::clear_all_flags() {
+		for(rc_coord cell : unopened_cells) {
+			_visgrid[cell.row][cell.col] = ms_hidden;
+		}
+		flag_count = 0;
+	}
 
 }

@@ -23,6 +23,9 @@ struct region_cmp_no_min_max {
     }
 };
 
+/**
+ * hash based on the underlying pointer
+ **/
 struct region_iter_hash {
     std::size_t operator()(const std::set<region, region_cmp_no_min_max>::const_iterator& arg) const {
         std::hash<const region*> my_hash;

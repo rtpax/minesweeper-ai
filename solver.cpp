@@ -12,7 +12,7 @@ namespace ms {
 	 * Copies grid, all other members default initialize
 	 **/
 	solver::solver(const grid& start, grid::copy_type gct) : 
-		g(start, gct), regions(g.height(), g.width()) {	}
+		g(start, gct), regions(height(), width()) {	}
 
 	/**
 	 * Initializes the internal grid with the given parameters
@@ -43,9 +43,18 @@ namespace ms {
 	int solver::find_base_regions() {
 		region remaining;
 
+		if(regions_were_reset) {
+			//all regions must be re-added
+			for (unsigned r = 0; r < height(); ++r) {
+				for(unsigned c = 0; c < width(); ++c) {
+					modified_cells.insert(rc_coord(r,c));
+				}
+			}
+		}
+
 		for (rc_coord cell : modified_cells) {
 			unsigned r = cell.row, c = cell.col;
-			grid::cell gotten = g.get(r,c);
+			grid::cell gotten = get(r,c);
 			if(gotten <= 8 && gotten > 0) { //grid handles zeroes automatically
 				remaining.remove_safe(rc_coord(r,c));
 				region reg;
@@ -54,7 +63,7 @@ namespace ms {
 				for (int rr = -1; rr <= 1; ++rr)
 					for (int cc = -1; cc <= 1; ++cc)
 						if (!(rr == 0 && cc == 0) && g.iscontained(r + rr, c + cc)) {
-							switch (g.get(r + rr, c + cc)) {
+							switch (get(r + rr, c + cc)) {
 							case grid::ms_hidden:
 							case grid::ms_question:
 								reg.add_cell(rc_coord(r + rr, c + cc));
@@ -69,7 +78,7 @@ namespace ms {
 						}
 				if(!reg.empty()) {
 					if(gotten < num_flags)
-						throw std::runtime_error("number of flags surrounding the cell exceeds the number of the cell");
+						throw bad_region_error("number of flags surrounding the cell exceeds the number of the cell");
 					reg.set_count(gotten - num_flags);
 					regions.add(reg);
 				}
@@ -80,15 +89,15 @@ namespace ms {
 		//this check is added to prevent massive slowdowns from adding remaining when it intersects around 100 cells -> 2000 cells
 		//the choice of 10 is somewhat arbitrary, TODO get a better system for deciding when to add remaining
 		if(g.count_unopened() < 10) {
-			for (unsigned int r = 0; r < g.height(); ++r) {
-				for (unsigned int c = 0; c < g.width(); ++c) {
+			for (unsigned int r = 0; r < height(); ++r) {
+				for (unsigned int c = 0; c < width(); ++c) {
 					remaining.add_cell(rc_coord(r,c));
 				}
 			}
-			remaining.set_count(g.bombs());
-			for (unsigned int r = 0; r < g.height(); ++r) {
-				for (unsigned int c = 0; c < g.width(); ++c) {
-					grid::cell gotten = g.get(r,c);
+			remaining.set_count(bombs());
+			for (unsigned int r = 0; r < height(); ++r) {
+				for (unsigned int c = 0; c < width(); ++c) {
+					grid::cell gotten = get(r,c);
 					if(gotten == grid::ms_flag) {
 						remaining.remove_bomb(rc_coord(r,c));
 					} else if(gotten <= 8 && gotten >= 0) {
@@ -220,7 +229,12 @@ namespace ms {
 	 * Returns zero if the cell is successfully flagged, nonzero otherwise.
 	 **/
 	int solver::manual_flag(rc_coord arg) {
-		return apply_flag(arg);
+		try {
+			return apply_flag(arg);
+		} catch (bad_region_error& bre) {
+			reset_regions();
+			return 1;
+		}
 	}
 
 	/**
@@ -233,6 +247,22 @@ namespace ms {
 	}
 
 	/**
+	 * Unflags a cell, resetting the region_set.
+	 * 
+	 * Slows down processing time considerably, but negligably from a user standpoint, so 
+	 * only used by a human user.
+	 * 
+	 * Returns zero if the cell is successfully flagged, nonzero otherwise.
+	 **/
+	int solver::manual_unflag(rc_coord arg) {
+		if(get(arg.row,arg.col) != grid::ms_flag)
+			return 1;
+		g.set_flag(arg.row,arg.col,grid::ms_hidden);
+		reset_regions();
+		return 0;
+	}
+
+	/**
 	 * Flags a cell, and treat it as a bomb for all future calculations.
 	 * 
 	 * Returns zero if the cell is successfully flagged
@@ -240,7 +270,7 @@ namespace ms {
 	int solver::apply_flag(rc_coord arg) {
 		g.set_flag(arg.row, arg.col, grid::ms_flag);
 
-		if(g.get(arg.row, arg.col) == grid::ms_flag) {
+		if(get(arg.row, arg.col) == grid::ms_flag) {
 			remove_bomb(arg);
 			return 0;
 		} else {
@@ -262,6 +292,15 @@ namespace ms {
 		}
 
 		return cells_opened.size();
+	}
+
+	/**
+	 * Clears the region set and populates with base regions.
+	 **/
+	int solver::reset_regions() {
+		regions.clear();
+		regions_were_reset = true;
+		return 0;
 	}
 
 	/**
@@ -314,15 +353,15 @@ namespace ms {
 
 	region solver::approx_remain() const {
 		region ret_base;
-		for(unsigned r = 0; r < g.height(); ++r) {
-			for(unsigned c = 0; c < g.width(); ++c) {
+		for(unsigned r = 0; r < height(); ++r) {
+			for(unsigned c = 0; c < width(); ++c) {
 				ret_base.add_cell(rc_coord(r,c));
 			}
 		}
-		ret_base.set_count(g.bombs());
-		for(unsigned r = 0; r < g.height(); ++r) {
-			for(unsigned c = 0; c < g.width(); ++c) {
-				switch(g.get(r,c)) {
+		ret_base.set_count(bombs());
+		for(unsigned r = 0; r < height(); ++r) {
+			for(unsigned c = 0; c < width(); ++c) {
+				switch(get(r,c)) {
 				case grid::ms_flag:
 					ret_base.remove_bomb(rc_coord(r,c));
 					break;
@@ -364,7 +403,7 @@ namespace ms {
 		for(int r = -1; r <= 1; ++r) {
 			for(int c = -1; c <= 1; ++c) {
 				if((c != 0 || r != 0) && g.iscontained(cell.row + r, cell.col + c)) {
-					grid::cell value = g.get(cell.row + r, cell.col + c);
+					grid::cell value = get(cell.row + r, cell.col + c);
 					if(value == grid::ms_hidden || value == grid::ms_question)
 						new_base.add_cell(rc_coord(cell.row + r, cell.col + c));
 				}
@@ -429,36 +468,49 @@ namespace ms {
 	 * Returns the cell opened, or `BAD_RC_COORD` if none is opened
 	 **/
 	rc_coord solver::step_certain() {
-		if(g.gamestate() != grid::RUNNING) {
-			return BAD_RC_COORD;
-		}
+		bool encountered_error = false;
+		step_certain_start:
+		try {
+			if(g.gamestate() != grid::RUNNING) {
+				return BAD_RC_COORD;
+			}
 
-		if(bomb_queue.empty() && safe_queue.empty()) {
-			fill_queue();
 			if(bomb_queue.empty() && safe_queue.empty()) {
-				find_regions();
 				fill_queue();
+				if(bomb_queue.empty() && safe_queue.empty()) {
+					find_regions();
+					fill_queue();
+				}
 			}
-		}
 
-		if(!bomb_queue.empty()) {
-			rc_coord ret = get_bomb_from_queue();
-			apply_flag(ret);
-			dbg::cout << "flagged: " << ret << "\n";
-			return ret;
-		} else if(!safe_queue.empty()) {
-			rc_coord ret = get_safe_from_queue();
-			if(g.get(ret.row,ret.col)!=grid::ms_hidden) {
-				throw std::logic_error("Attempting to open a non-hidden cell");
+			if(!bomb_queue.empty()) {
+				rc_coord ret = get_bomb_from_queue();
+				apply_flag(ret);
+				dbg::cout << "flagged: " << ret << "\n";
+				return ret;
+			} else if(!safe_queue.empty()) {
+				rc_coord ret = get_safe_from_queue();
+				if(get(ret.row,ret.col)!=grid::ms_hidden) {
+					throw bad_region_error("Attempting to open a non-hidden cell");
+				}
+				int open_status = apply_open(ret);//removes ret
+				if(!(open_status > 0)) {
+					throw bad_region_error("Opened the wrong number of cells");
+				}
+				dbg::cout << "opened: " << ret << "\n";
+				return ret;
+			} else {
+				return BAD_RC_COORD;
 			}
-			int open_status = apply_open(ret);//removes ret
-			if(!(open_status > 0)) {
-				throw std::logic_error("Opened the wrong number of cells");
+		} catch (bad_region_error& bre) {
+			if(encountered_error) {
+				throw bad_region_error(std::string("unresolved error in step_certain: ") + bre.what());
+			} else {
+				g.clear_all_flags();
+				reset_regions();
+				encountered_error = true;
+				goto step_certain_start;
 			}
-			dbg::cout << "opened: " << ret << "\n";
-			return ret;
-		} else {
-			return BAD_RC_COORD;
 		}
 	}
 
@@ -485,8 +537,8 @@ namespace ms {
 	rc_coord solver::step() {
 		dbg::cout2 << ">";
 		if(g.gamestate() == grid::NEW) {
-			std::uniform_int_distribution<> uid_row(0, g.height() - 1);
-			std::uniform_int_distribution<> uid_col(0, g.width() - 1);
+			std::uniform_int_distribution<> uid_row(0, height() - 1);
+			std::uniform_int_distribution<> uid_col(0, width() - 1);
 			rc_coord cell(uid_row(rng), uid_col(rng));
 			apply_open(cell);
 			return cell;
@@ -507,9 +559,9 @@ namespace ms {
 		float default_prob = (remain.min() + remain.max()) / (2.f * remain.size()); //note that output could be infinite
 		constexpr float threshhold = .001;
 
-		for(unsigned row = 0; row < g.height(); ++row) {
-			for(unsigned col = 0; col < g.width(); ++col) {
-				if(g.get(row,col) == grid::ms_hidden || g.get(row,col) == grid::ms_question) {
+		for(unsigned row = 0; row < height(); ++row) {
+			for(unsigned col = 0; col < width(); ++col) {
+				if(get(row,col) == grid::ms_hidden || get(row,col) == grid::ms_question) {
 					const region_set::subset_type& regions_at = regions.regions_intersecting(rc_coord(row, col));
 					//select the smallest regions since they are most relevant
 					std::vector<region_set::iterator> smallest_regions;

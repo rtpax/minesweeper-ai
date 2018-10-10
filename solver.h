@@ -38,6 +38,7 @@ namespace ms {
 
 		int manual_open(rc_coord cell);
 		int manual_flag(rc_coord cell);
+		int manual_unflag(rc_coord cell);
 
 		/**Returns the internal `grid`'s gamestate*/
 		int gamestate() { return g.gamestate(); }
@@ -47,15 +48,17 @@ namespace ms {
 		/**Returns a complete copy of the games internal grid.*/
 		grid get_grid() const { return grid(g, grid::FULL_COPY); } 
 
-		unsigned bombs() { return g.bombs(); }
-		unsigned width() { return g.width(); }
-		unsigned height() { return g.height(); }
-		grid::cell get(unsigned row, unsigned col) { return g.get(row,col); }
+		unsigned bombs() const { return g.bombs(); }
+		unsigned width() const { return g.width(); }
+		unsigned height() const { return g.height(); }
+		grid::cell get(unsigned row, unsigned col) const { return g.get(row,col); }
+		int remaining_bombs() const { return g.remaining_bombs(); }
 	protected:
 		static std::mt19937 rng;
 
 		grid g;
 		region_set regions;
+		bool regions_were_reset = false;
 		std::unordered_set<rc_coord, rc_coord_hash> safe_queue;
 		std::unordered_set<rc_coord, rc_coord_hash> bomb_queue;
 		std::unordered_set<rc_coord, rc_coord_hash> modified_cells;
@@ -68,6 +71,7 @@ namespace ms {
 		int clear_queue();
 		int apply_open(rc_coord cell);
 		int apply_flag(rc_coord cell);
+		int reset_regions();
 		
 		region approx_remain() const;
 		float expected_payout(rc_coord cell) const;

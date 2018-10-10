@@ -10,6 +10,7 @@ namespace ms {
     static bool window_started = false;
     static int cursorx = 0;
     static int cursory = 0;
+    static bool had_stopped = false; //redrawing within the sigcont handler failed, this is a workaround
 
     static char cell_to_char(ms::grid::cell c) {
         switch(c) {
@@ -34,6 +35,8 @@ namespace ms {
         case ms::grid::ms_hidden:
             return ' ';
         case ms::grid::ms_bomb:
+            return 'x';
+        case ms::grid::ms_unopened_bomb:
             return '*';
         case ms::grid::ms_flag:
             return 'F';
@@ -50,7 +53,7 @@ namespace ms {
         int height = active_window->height();
         int width = active_window->width();
         int basex = (maxx - (width * 2 + 3)) / 2;
-        int basey = (maxy - (height + 2)) / 2;
+        int basey = (maxy - (height + 2)) / 2 + 1;
         wmove(stdscr,basey + cursory + 1,basex + 2*cursorx + 2);
     }
 
@@ -60,13 +63,13 @@ namespace ms {
         int height = active_window->height();
         int width = active_window->width();
 
-        if(maxx <  width * 2 + 2 || maxy < height + 2 - 1) {
+        if(maxx <  width * 2 + 2 || maxy < height + 2 - 1 + 1) {
             clear();
             mvaddstr(0, 0, "Window too small to display grid");
             return;
         }
         int basex = (maxx - (width * 2 + 3)) / 2;
-        int basey = (maxy - (height + 2)) / 2;
+        int basey = (maxy - (height + 2)) / 2 + 1;
         if(redraw) {
             clear();
             for(int row = 0; row < height; ++row) {
@@ -78,6 +81,24 @@ namespace ms {
                 mvaddch(basey + height + 1, basex + col + 1, '-');
             }
         }
+        mvaddstr(basey-1,basex,"    ");
+        mvaddstr(basey-1,basex,std::to_string(active_window->remaining_bombs()).c_str());
+        char ch = '#';
+        switch(active_window->gamestate()) {
+        case grid::RUNNING:
+            ch = 'R';
+            break;
+        case grid::WON:
+            ch = 'W';
+            break;
+        case grid::LOST:
+            ch = 'L';
+            break;
+        case grid::NEW:
+            ch = 'N';
+            break;
+        }
+        mvaddch(basey-1,basex + width + 1,ch);
         for(int row = 0; row < height; ++row) {
             for(int col = 0; col < width; ++col) {
                 mvaddch(basey + row + 1, basex + col * 2 + 2, cell_to_char(active_window->get(row,col)));
@@ -98,10 +119,17 @@ namespace ms {
             draw_ui(true);
         }
     }
+    static void on_cont(int) {
+        had_stopped = true;
+    }
 
 
     static void ui_loop() {
         while(1) {
+            if(had_stopped) {
+                draw_ui(true);
+                had_stopped = false;
+            }
             int ch = getch();
             switch(ch) {
             case ERR:
@@ -167,12 +195,23 @@ namespace ms {
                 break;
             case 'f':
             case 'F':
+                if(active_window->gamestate() != grid::NEW && active_window->gamestate() != grid::RUNNING)
+                    break; 
                 active_window->manual_flag(rc_coord(cursory, cursorx));
+                draw_ui(false);
+                break;
+            case 'g':
+            case 'G':
+                if(active_window->gamestate() != grid::NEW && active_window->gamestate() != grid::RUNNING)
+                    break; 
+                active_window->manual_unflag(rc_coord(cursory, cursorx));
                 draw_ui(false);
                 break;
             case 'o':
             case 'O':
             case '\n':
+                if(active_window->gamestate() != grid::NEW && active_window->gamestate() != grid::RUNNING)
+                    break;
                 active_window->manual_open(rc_coord(cursory, cursorx));
                 draw_ui(false);
                 break;
@@ -184,6 +223,7 @@ namespace ms {
         if(!window_started) {
             signal(SIGINT, &on_interrupt);
             signal(SIGWINCH, &on_resize);
+            signal(SIGCONT, &on_cont);
             window_started = true;
         }
         if(active_window == nullptr)
@@ -197,9 +237,9 @@ namespace ms {
         draw_ui(true);
         try {
             ui_loop();
-        } catch (std::exception&) {
+        } catch (std::exception& e) {
             endwin();
-            std::cout << "Encountered an error\n";
+            std::cout << "Encountered an error: " << e.what() << "\n";
             return;
         }
         endwin();

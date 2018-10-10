@@ -52,6 +52,8 @@ namespace ms {
 			ms_flag = 12, 
 			/**Not a bomb, but specific number not known. Only used by ms::spingrid.**/
 			ms_non_bomb = 13, 
+			/**This cell is a bomb that was not opened during the game. **/
+			ms_unopened_bomb = 14,
 			/**This indicates some sort of error has occured. See specific function details for more info.**/
 			ms_error = -1 
 		};
@@ -114,6 +116,8 @@ namespace ms {
 		gamestate gamestate() const { return _gs; }
 		bool iscontained(int row, int col) const;
 		int count_unopened() const { return unopened_cells.size() - flag_count; }
+		int count_flags() const { return flag_count; }
+		int remaining_bombs() const { return bombs() - flag_count > 0 ? bombs() - flag_count : 0; }
 
 		/**Returns the visible contents of a cell. Return `ms_error` if the specified cell is not contained in the grid.**/
 		cell get(unsigned int row, unsigned int col) const { 
@@ -122,6 +126,7 @@ namespace ms {
 		
 		int flag(unsigned int row, unsigned int col);
 		int set_flag(unsigned int row, unsigned int col, cell flag);
+		void clear_all_flags();
 		std::unordered_set<rc_coord, rc_coord_hash> open(unsigned int row, unsigned int col);
 		
 		void reset();
