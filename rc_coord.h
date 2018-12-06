@@ -35,7 +35,11 @@ struct rc_coord {
 };
 
 /**indicates a bad value for an rc_coord, such as when searching for an rc_coord but none is found**/
+#if __cpp_inline_variables >= 201606
 inline constexpr rc_coord BAD_RC_COORD{ std::numeric_limits<unsigned>::max(), std::numeric_limits<unsigned>::max() };
+#else
+static constexpr rc_coord BAD_RC_COORD{ std::numeric_limits<unsigned>::max(), std::numeric_limits<unsigned>::max() };
+#endif
 
 inline std::ostream& operator<<(std::ostream& os, const rc_coord& rc) {
     return os << rc.to_string();

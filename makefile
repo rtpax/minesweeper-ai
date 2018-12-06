@@ -1,70 +1,76 @@
 CXX:=g++
-LD:=g++
 DEBUG_LEVEL := 0
 
-CXXFLAGS := -O2 -std=c++17 -g -Wall -DNDEBUG
+RELEASE_CXXFLAGS := -O2 -std=c++17 -g -Wall -DNDEBUG
 DEBUG_CXXFLAGS := -O0 -fno-inline -g -std=c++17 -Wall -DDEBUG=$(DEBUG_LEVEL)
 PROF_CXXFLAGS := -O2 -std=c++17 -g -Wall -DNDEBUG -pg
-CPPFLAGS := -I/c/msys64/mingw64/include
-LDFLAGS := -L/c/msys64/mingw64/libs
+RELEASE_BUILD_DIR := release
+DEBUG_BUILD_DIR := debug
+PROF_BUILD_DIR := prof
+
+config:=release
+
+INSTALL_DIR := ~/bin
+BUILD_DIR := $(RELEASE_BUILD_DIR)
+CXXFLAGS := $(RELEASE_CXXFLAGS)
+
+ifeq ($(config), release)
+BUILD_DIR := $(RELEASE_BUILD_DIR)
+CXXFLAGS := $(RELEASE_CXXFLAGS)
+endif
+ifeq ($(config), debug)
+BUILD_DIR := $(DEBUG_BUILD_DIR)
+CXXFLAGS := $(DEBUG_CXXFLAGS)
+endif
+ifeq ($(config), prof)
+BUILD_DIR := $(PROF_BUILD_DIR)
+CXXFLAGS := $(PROF_CXXFLAGS)
+endif
+
+CPPFLAGS :=
+LDFLAGS :=
 LDLIBS := -lncurses
 
-OBJS := grid.o region.o region_set.o solver.o ui.o
-MAIN_OBJS := main.o $(OBJS)
-TEST_OBJS := ./test/test.o $(OBJS)
-DEBUG_OBJS := $(MAIN_OBJS:.o=.debug.o)
-PROF_OBJS := $(MAIN_OBJS:.o=.prof.o)
+SHARED_SRCS := grid.cpp region.cpp region_set.cpp solver.cpp ui.cpp
+SRCS := main.cpp $(SHARED_SRCS)
+OBJS := $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
+DEPS := $(SRCS:%.cpp=$(BUILD_DIR)/%.d)
+TEST_SRCS := test.cpp $(SHARED_SRCS)
+TEST_OBJS := $(TEST_SRCS:%.cpp=$(BUILD_DIR)/%.o)
+TEST_DEPS := $(TEST_SRCS:%.cpp=$(BUILD_DIR)/%.d)
 
-all: sweep.exe debug.exe test.exe prof.exe
+.PHONY: all test sweep install
 
-release: sweep.exe
+sweep: $(BUILD_DIR) $(BUILD_DIR)/sweep
 
-debug: debug.exe
+all: sweep test
 
-test: test.exe
+test: $(BUILD_DIR) $(BUILD_DIR)/test
 
-prof: prof.exe
+install: sweep
+	cp $(BUILD_DIR)/sweep $(INSTALL_DIR)
 
-sweep.exe: $(MAIN_OBJS)
-	$(LD) $(MAIN_OBJS) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o sweep.exe
+$(BUILD_DIR):
+	mkdir $(BUILD_DIR)
 
-debug.exe: $(DEBUG_OBJS)
-	$(LD) $(DEBUG_OBJS) $(DEBUG_CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o debug.exe
+$(BUILD_DIR)/sweep: $(OBJS)
+	$(CXX) $(OBJS) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o $(BUILD_DIR)/sweep
 
-test.exe: $(TEST_OBJS)
-	$(LD) $(TEST_OBJS) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o test.exe
+$(BUILD_DIR)/test: $(TEST_OBJS)
+	$(CXX) $(TEST_OBJS) $(CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o $(BUILD_DIR)/test
 
-prof.exe: $(PROF_OBJS)
-	$(LD) $(PROF_OBJS) $(PROF_CXXFLAGS) $(LDFLAGS) $(LDLIBS) -o prof.exe
+$(BUILD_DIR)/%.o: %.cpp
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+	$(CXX) -MM $(CPPFLAGS) $(CXXFLAGS) $< -MT $@ > $(BUILD_DIR)/$*.d
 
-%.o: %.cpp
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $*.cpp -o $*.o
-	$(CXX) -MM $(CPPFLAGS) $(CXXFLAGS) $*.cpp -MT $*.o > $*.d
-
-%.debug.o: %.cpp
-	$(CXX) -c $(CPPFLAGS) $(DEBUG_CXXFLAGS) $*.cpp -o $*.debug.o
-	$(CXX) -MM $(CPPFLAGS) $(DEBUG_CXXFLAGS) $*.cpp -MT $*.debug.o > $*.debug.d
-
-%.prof.o: %.cpp
-	$(CXX) -c $(CPPFLAGS) $(PROF_CXXFLAGS) $*.cpp -o $*.prof.o
-	$(CXX) -MM $(CPPFLAGS) $(PROF_CXXFLAGS) $*.cpp -MT $*.prof.o > $*.prof.d
-
--include $(MAIN_OBJS:.o=.d)
--include $(TEST_OBJS:.o=.d)
--include $(DEBUG_OBJS:.o=.d)
--include $(PROF_OBJS:.o=.d)
-
-prof-clean:
-	rm -rf *.prof.o *.prof.d prof.exe
-
-debug-clean:
-	rm -rf *.debug.o *.debug.d debug.exe
+-include $(DEPS)
+-include $(TEST_DEPS)
 
 clean:
-	rm -rf *.o *.d
+	rm -rf $(BUILD_DIR)
 
-distclean: clean
-	rm -rf *.exe
+clean-objs:
+	rm $(OBJS) $(TEST_OBJS)
 
 
 

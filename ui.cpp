@@ -1,8 +1,9 @@
 #include "ui.h"
-#include <ncurses/ncurses.h>
+#include <ncurses.h>
 #include <thread>
 #include <stdexcept>
 #include <iostream>
+#include <signal.h>
 
 namespace ms {
 

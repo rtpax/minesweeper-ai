@@ -1,13 +1,14 @@
-*.o
-*.exe
-*.stackdump
-*.d
-*.output
-*.out
+# build dirs
+/debug
+/release
+/prof
 
-/.log
-
+# user dirs
 /.vscode
 /sandbox
 /dox
 
+# commonly generated files
+gmon.out
+*.stackdump
+core
