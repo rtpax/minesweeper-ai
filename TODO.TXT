@@ -109,6 +109,10 @@ PRIORITY: MEDIUM
 PRIORITY: LOW
 ~   Program can freeze computer by consuming too much memory on large boards/overly
     hungry algorithms. Prefer to give up early instead of this
+~   Curses does not display bombs after game lost on large grids (>100 dimension with about 15% bombs)
+    Date: 12/19/2018
+~   Curses default colors different than actual gnome-terminal default colors
+    Date: 12/19/2018
 
 
 

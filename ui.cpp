@@ -13,10 +13,20 @@ namespace ms {
     static int cursory = 0;
     static bool had_stopped = false; //redrawing within the sigcont handler failed, this is a workaround
 
+    static bool use_color = false;
+
+    void ui_use_color(bool color) {
+        use_color = color;
+    }
+
+    bool ui_using_color() {
+        return use_color;
+    }
+
     static char cell_to_char(ms::grid::cell c) {
         switch(c) {
         case ms::grid::ms_0:
-            return '0';
+            return '.';
         case ms::grid::ms_1:
             return '1';
         case ms::grid::ms_2:
@@ -48,6 +58,60 @@ namespace ms {
         }
     }
 
+    static void set_cell_color(ms::grid::cell c) {
+        if(!use_color) {
+            attron(COLOR_PAIR(100));
+            return;
+        }
+
+        switch(c) {
+        case ms::grid::ms_0:
+            attron(COLOR_PAIR(6));
+            break;
+        case ms::grid::ms_1:
+            attron(COLOR_PAIR(1));
+            break;
+        case ms::grid::ms_2:
+            attron(COLOR_PAIR(2));
+            break;
+        case ms::grid::ms_3:
+            attron(COLOR_PAIR(3));
+            break;
+        case ms::grid::ms_4:
+            attron(COLOR_PAIR(4));
+            break;
+        case ms::grid::ms_5:
+            attron(COLOR_PAIR(5));
+            break;
+        case ms::grid::ms_6:
+            attron(COLOR_PAIR(6));
+            break;
+        case ms::grid::ms_7:
+            attron(COLOR_PAIR(7));
+            break;
+        case ms::grid::ms_8:
+            attron(COLOR_PAIR(8));
+            break;
+        case ms::grid::ms_hidden:
+            attron(COLOR_PAIR(100));
+            break;
+        case ms::grid::ms_bomb:
+            attron(COLOR_PAIR(10));
+            break;
+        case ms::grid::ms_unopened_bomb:
+            attron(COLOR_PAIR(100));
+            break;
+        case ms::grid::ms_flag:
+            attron(COLOR_PAIR(100));
+            break;
+        case ms::grid::ms_question:
+            attron(COLOR_PAIR(100));
+            break;
+        default:
+            attron(COLOR_PAIR(9));
+        }
+    }
+
     static void go_to_cursor() {
         int maxx = getmaxx(stdscr);
         int maxy = getmaxy(stdscr);
@@ -63,6 +127,8 @@ namespace ms {
         int maxy = getmaxy(stdscr);
         int height = active_window->height();
         int width = active_window->width();
+
+        attron(COLOR_PAIR(100));
 
         if(maxx <  width * 2 + 2 || maxy < height + 2 - 1 + 1) {
             clear();
@@ -102,10 +168,13 @@ namespace ms {
         mvaddch(basey-1,basex + width + 1,ch);
         for(int row = 0; row < height; ++row) {
             for(int col = 0; col < width; ++col) {
+                set_cell_color(active_window->get(row,col));
                 mvaddch(basey + row + 1, basex + col * 2 + 2, cell_to_char(active_window->get(row,col)));
             }
         }
+        attron(COLOR_PAIR(100));
         wmove(stdscr,basey + cursory + 1,basex + 2*cursorx + 2);
+        refresh();
     }
 
     static void on_interrupt(int arg) {
@@ -126,6 +195,10 @@ namespace ms {
 
 
     static void ui_loop() {
+        using clock = std::chrono::high_resolution_clock;
+        using ms = std::chrono::milliseconds;
+        clock::time_point cycle_time;
+
         while(1) {
             if(had_stopped) {
                 draw_ui(true);
@@ -148,7 +221,7 @@ namespace ms {
                     active_window = new solver(temp->height(), temp->width(), temp->bombs());
                     delete temp;
                 }
-                draw_ui(false);
+                draw_ui(true);
                 break;
             case KEY_DOWN:
                 if(cursory + 1 < (int)active_window->height())
@@ -183,7 +256,15 @@ namespace ms {
                 draw_ui(false);
                 break;
             case 'Z':
-                active_window->solve_certain();
+                cycle_time = clock::now() + ms(10);
+                while(active_window->step_certain() != BAD_RC_COORD) {
+                    if(getch() != ERR)
+                        break;
+                    if(clock::now() > cycle_time) {
+                        cycle_time = clock::now() + ms(10);
+                        draw_ui(false);
+                    }
+                }
                 draw_ui(false);
                 break;
             case 'x':
@@ -191,7 +272,20 @@ namespace ms {
                 draw_ui(false);
                 break;
             case 'X':
-                active_window->solve();
+                cycle_time = clock::now() + ms(10);
+                while(active_window->step() != BAD_RC_COORD) {
+                    if(getch() != ERR)
+                        break;
+                    if(clock::now() > cycle_time) {//displaying too often slows program down
+                        cycle_time = clock::now() + ms(10);
+                        draw_ui(false);
+                    }
+                }
+                draw_ui(false);
+                break;
+            case 'c':
+            case 'C':
+                use_color = !use_color;
                 draw_ui(false);
                 break;
             case 'f':
@@ -233,6 +327,21 @@ namespace ms {
         cbreak();
         noecho();
         keypad(stdscr, true);
+        start_color();
+
+        init_pair(1, COLOR_BLUE, COLOR_BLACK);
+        init_pair(2, COLOR_GREEN, COLOR_BLACK);
+        init_pair(3, COLOR_RED, COLOR_BLACK);
+        init_pair(4, COLOR_CYAN, COLOR_BLACK);
+        init_pair(5, COLOR_MAGENTA, COLOR_BLACK);
+        init_pair(6, COLOR_YELLOW, COLOR_BLACK);
+        init_pair(7, COLOR_CYAN, COLOR_BLACK);
+        init_pair(8, COLOR_MAGENTA, COLOR_BLACK);
+        init_pair(9, COLOR_BLACK, COLOR_RED);
+        init_pair(10, COLOR_BLACK, COLOR_WHITE);
+
+        init_pair(100, COLOR_WHITE, COLOR_BLACK);
+
         if(nodelay(stdscr, true) == ERR)
             throw std::runtime_error("nodelay error");
         draw_ui(true);

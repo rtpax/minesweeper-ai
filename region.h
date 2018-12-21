@@ -23,6 +23,7 @@ namespace ms {
 		friend region_cmp_no_min_max;
 
 		std::set<rc_coord> _cells;
+		//mutable to allow region_set::order_preserve_merge_work
 		mutable unsigned int _max, _min;
 	public:
 		/**The maximum number of bombs that could possibly be in the region.\n Complexity \f$O(1)\f$**/
